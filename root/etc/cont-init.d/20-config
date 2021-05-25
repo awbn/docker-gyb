@@ -1,0 +1,53 @@
+#!/usr/bin/with-contenv bash
+
+# Docker is headless
+touch /app/src/nobrowser.txt
+
+# Block Short URLs?
+if [ -n "${NOSHORTURLS}" ]; then
+  echo "127.0.0.1  gyb-shortn.jaylee.us" >> /etc/hosts
+fi
+
+# Fix permissions
+chown -R abc:abc \
+	/app \
+    /config
+
+# Send mail on cron error?
+if [ -n "${MAIL_FROM}" ] && [ -n "${MAIL_TO}" ]; then
+    echo "[Config] Sending mail to ${MAIL_TO} on cron errors"
+    MAILERR="/app/mailonerror"
+fi
+
+# Set cron schedule
+if [ -n "${LOG_FILE}" ]; then
+    echo "[Config] Logging to ${LOG_FILE}"
+    LOG_FILE="| /app/timestamp >> ${LOG_FILE}"
+fi
+
+
+
+if [ -n "${JOB_FULL_CMD}" ] && [ -n "${JOB_FULL_CRON}" ]; then
+    echo "${JOB_FULL_CRON} ${MAILERR} ${JOB_FULL_CMD} 2>&1 ${LOG_FILE}" >> /etc/crontabs/abc
+fi
+
+if [ -n "${JOB_INC_CMD}" ] && [ -n "${JOB_INC_CRON}" ]; then
+    echo "${JOB_INC_CRON} ${MAILERR} ${JOB_INC_CMD} 2>&1 ${LOG_FILE}" >> /etc/crontabs/abc
+fi
+
+if [ -n "${JOB_EXTRA_CMD}" ] && [ -n "${JOB_EXTRA_CRON}" ]; then
+    echo "${JOB_EXTRA_CRON} ${MAILERR} ${JOB_EXTRA_CMD} 2>&1 ${LOG_FILE}" >> /etc/crontabs/abc
+fi
+
+# No real point in running root crontab
+crontab -r root
+
+# Set up mail
+cat << EOF > /etc/ssmtp/ssmtp.conf
+mailhub=${SMTP_HOST}:${SMTP_PORT}
+AuthUser=${SMTP_USER}
+AuthPass=${SMTP_PASS}
+FromLineOverride=YES
+UseSTARTTLS=YES
+UseTLS=${SMTP_TLS:-YES}
+EOF

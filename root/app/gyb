@@ -1,0 +1,32 @@
+#!/usr/bin/with-contenv bash
+
+if [ -n "${MEM_LIMIT}" ]; then
+  MEM_LIMIT=" --memory-limit ${MEM_LIMIT}"
+fi
+
+if [ -n "${EMAIL}" ]; then
+  EMAIL=" --email ${EMAIL}"
+fi
+
+if [ -n "${DEBUG}" ]; then
+  DEBUG=" --debug"
+fi
+
+LOCAL_FOLDER=" --local-folder ${DEST:-/config/data}"
+
+# Trick GYB into storing data in the docker volumne. Make sure it ends in '/'
+export STATICX_PROG_PATH=/config/
+
+CMD="$@${MEM_LIMIT}${EMAIL}${LOCAL_FOLDER}${DEBUG}"
+echo "[Running] python3 /app/src/gyb.py ${CMD}"
+
+# Run in app user context
+if [ $(id -u) -eq 0 ]; then
+  CTX="s6-setuidgid abc"
+fi
+
+exec ${CTX} \
+  python3 /app/src/gyb.py \
+  ${CMD}
+
+#| sed "s/\/app\/src\/gyb.py/\/app\/gyb/g" # Use our helper script
