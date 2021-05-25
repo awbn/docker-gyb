@@ -11,13 +11,18 @@ Tags correspond with [Got Your Back releases](https://github.com/jay0lee/got-you
 [GYB](https://github.com/jay0lee/got-your-back) requires some bootstrapping to create a new project before you can run. For complete bootstrapping steps, see the [GYB Wiki](https://github.com/jay0lee/got-your-back/wiki#running-gyb-for-the-first-time).
 
 ### First Run
-`docker run -it -e EMAIL=example@gmail.com -e NOCRON=1 -v ${PWD}/config:/config awbn/gyb /app/gyb --action create-project` and follow the prompts. See [Bootstrapping Notes](#bootstrapping-notes) below for an abbreviated set of steps.
+```bash
+docker run -it -e EMAIL=example@gmail.com -e NOCRON=1 -v ${PWD}/config:/config awbn/gyb /app/gyb --action create-project
+```
+...and follow the prompts. See [Bootstrapping Notes](#bootstrapping-notes) below for an abbreviated set of steps.
 
 Once you've created the project and cached the credentials, you can run the container to start the background cron jobs. Make sure that you mount the same volume so that the credentials are re-used.
 
 ### First backup
 The first full backup will (likely) take a long time. It's recommend to do this as a one-off run: 
-`docker run -it -e EMAIL=example@gmail.com -e NOCRON=1 -v ${PWD}/config:/config awbn/gyb /app/gyb --action backup`
+```bash
+docker run -it -e EMAIL=example@gmail.com -e NOCRON=1 -v ${PWD}/config:/config awbn/gyb /app/gyb --action backup
+```
 
 ### Backups
 By default you should start the container in detached mode and let it run incremental and full backups. See the docker-compose or CLI examples below.
@@ -53,7 +58,10 @@ docker run -d \
 ```
 
 ### Restoring from backup
-See [GYB's wiki](https://github.com/jay0lee/got-your-back/wiki#performing-a-restore) for information on how to restore from a backup. Running the command in a container might look like: `docker run -it -e EMAIL=example@gmail.com -e NOCRON=1 -v ${PWD}/config:/config awbn/gyb /app/gyb --action restore`.
+See [GYB's wiki](https://github.com/jay0lee/got-your-back/wiki#performing-a-restore) for information on how to restore from a backup. Running the command in a container might look like:
+```bash
+docker run -it -e EMAIL=example@gmail.com -e NOCRON=1 -v ${PWD}/config:/config awbn/gyb /app/gyb --action restore
+```
 
 Note that you must have given the OAuth token 'write' permissions to your gmail account during bootstrapping for restore to work. If you didn't, you can delete the `<email>.cfg` file from the `/config` volume to force GYB to prompt for a new token.
 
@@ -116,3 +124,15 @@ See the [GYB Wiki](https://github.com/jay0lee/got-your-back/wiki#running-gyb-for
 - Run `docker run -it -e EMAIL=example@gmail.com -e NOCRON=1 -v ${PWD}/config:/config awbn/gyb /app/gyb --action --action estimate --search "newer_than:7d"`
   - Select Scopes (Recommended: 1,5 for read-only backups)
   - Visit provided URL and paste token into the console. At this point the credentials should be fully saved and the service account authorized
+
+## Build Docker image
+```bash
+# e.g. docker build -t awbn/gyb .
+docker build -t <repo>[:<tag>] .
+```
+
+Multi-architecture image:
+```bash
+# e.g. ./buildx.sh -t awbn/gyb 
+./buildx.sh -t <repo>[:<tag>]
+```
