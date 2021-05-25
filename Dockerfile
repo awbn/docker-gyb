@@ -14,23 +14,19 @@ ENV PYTHONUNBUFFERED=1 \
 RUN \
   echo "**** install packages ****" && \ 
   apk add --no-cache \
-	  curl \
- 	  py3-pip \
-  	jq \
-    ssmtp \
-    git  && \
+    curl \
+    jq \
+    py3-pip \
+    ssmtp && \
   if [ -z ${GYB_VERSION+x} ]; then \
-	  GYB_VERSION=$(curl -sX GET https://api.github.com/repos/jay0lee/got-your-back/releases/latest \
-	  | jq -r '.tag_name'); \
+    GYB_VERSION=$(curl -sX GET https://api.github.com/repos/jay0lee/got-your-back/releases/latest \
+    | jq -r '.tag_name'); \
   fi && \
-  echo "**** install Got-Your-Back ${GYB_VERSION} ****" && \
-  git config --global advice.detachedHead false && \
-  git clone --depth 1 \
-  	--branch ${GYB_VERSION} \
-	  https://github.com/jay0lee/got-your-back.git \
-	  /app/src && \
-  rm -r /app/src/.git && \
-  pip3 install --requirement /app/src/requirements.txt
+  echo "**** install Got-Your-Back ${GYB_VERSION} ****" && \  
+  mkdir -p /app/src && \ 
+  curl -sLX GET https://github.com/jay0lee/got-your-back/archive/refs/tags/${GYB_VERSION}.tar.gz \
+    | tar -zx --strip-components=1 -C /app/src && \
+  pip3 install --no-cache-dir --requirement /app/src/requirements.txt
 
 COPY root/ /
 VOLUME ["/config"]
