@@ -1,8 +1,11 @@
 # [awbn/docker-gyb](https://github.com/awbn/docker-gyb)
-A containerized version of [Got Your Back](https://github.com/jay0lee/got-your-back) to make it easy to back up your Gmail account.
+A containerized version of [Got Your Back](https://github.com/jay0lee/got-your-back) to make it easy to back up your Gmail account. Can run standalone or as  full/incremental cron jobs (default).
 
 ## Supported architectures
-Currently, only supports x86-64. ARM will come in a future release.
+This is a multiarch image which supports `linux/amd64`,`linux/arm64`, and `linux/arm/v7`.
+
+## Tags
+Tags correspond with [Got Your Back releases](https://github.com/jay0lee/got-your-back/releases)
 
 ## Usage
 [GYB](https://github.com/jay0lee/got-your-back) requires some bootstrapping to create a new project before you can run. For complete bootstrapping steps, see the [GYB Wiki](https://github.com/jay0lee/got-your-back/wiki#running-gyb-for-the-first-time).
@@ -12,7 +15,14 @@ Currently, only supports x86-64. ARM will come in a future release.
 
 Once you've created the project and cached the credentials, you can run the container to start the background cron jobs. Make sure that you mount the same volume so that the credentials are re-used.
 
-### Docker Compose
+### First backup
+The first full backup will (likely) take a long time. It's recommend to do this as a one-off run: 
+`docker run -it -e EMAIL=example@gmail.com -e NOCRON=1 -v ${PWD}/config:/config awbn/gyb /app/gyb --action backup`
+
+### Backups
+By default you should start the container in detached mode and let it run incremental and full backups. See the docker-compose or CLI examples below.
+
+#### Docker compose
 ```yaml
 version: "3"
 services:
@@ -29,7 +39,7 @@ services:
     restart: unless-stopped
 ```
 
-### CLI
+#### CLI
 ```bash
 docker run -d \
   --name=got-your-back \
@@ -42,8 +52,13 @@ docker run -d \
   awbn/gyb
 ```
 
+### Restoring from backup
+See [GYB's wiki](https://github.com/jay0lee/got-your-back/wiki#performing-a-restore) for information on how to restore from a backup. Running the command in a container might look like: `docker run -it -e EMAIL=example@gmail.com -e NOCRON=1 -v ${PWD}/config:/config awbn/gyb /app/gyb --action restore`.
+
+Note that you must have given the OAuth token 'write' permissions to your gmail account during bootstrapping for restore to work. If you didn't, you can delete the `<email>.cfg` file from the `/config` volume to force GYB to prompt for a new token.
+
 ## Advanced Usage
-This container is based on [LinuxServer.io](https://linuxserver.io)'s Alpine base image. This means you can take advantage of all the LSIO goodness, including regular base imge updates, user/group identification, loading environment variables from files (docker secrets), etc. See the [LSIO docs](https://docs.linuxserver.io) for more info.
+This container is based on [LinuxServer.io](https://linuxserver.io)'s Alpine base image. This means you can take advantage of all the LSIO goodness, including regular base image updates, user/group identification, loading environment variables from files (docker secrets), etc. See the [LSIO docs](https://docs.linuxserver.io) for more info.
 
 ### Getting notified of failures
 This container can be configured to send you an email if your cron job(s) fail. To do so, you'll need to pass in the `MAIL_TO`, `MAIL_FROM`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and, optionally, the `SMTP_TLS` env variables.
@@ -51,14 +66,9 @@ This container can be configured to send you an email if your cron job(s) fail. 
 ### Customizing the jobs
 By default the container has two jobs which are run on a regular schedule. The 'Full' job runs at 1am every Sunday (timezone depends on the container's TZ) and does a full backup. The incremental job runs at 1am Monday-Saturday and does a partial backup using GYB's [`--search` parameter](https://github.com/jay0lee/got-your-back/wiki#improving-backup-speed-incremental-daily-backups). You can customize the timing of these jobs and the GYB command which is run using environment variables. You can also define your own custom job as well.
 
-To run the full job at a different schedule, set the `JOB_FULL_CRON` env variable to a [valid cron syntax](https://crontab.guru). To run a different command for that job (e.g., to include only a particular label), set the `JOB_FULL_CMD` env variable to `/app/gyb <valid gyb command>`. See the [GYB Wiki](https://github.com/jay0lee/got-your-back/wiki) for more info on valid GYB commands.
+To run the full job at a different schedule, set the `JOB_FULL_CRON` env variable to [valid cron syntax](https://crontab.guru). To run a different command for that job (e.g., to include only a particular label), set the `JOB_FULL_CMD` env variable to `/app/gyb <valid gyb command>`. See the [GYB Wiki](https://github.com/jay0lee/got-your-back/wiki) for more info on valid GYB commands.
 
 In addition to the `JOB_FULL_` job, there are also the `JOB_INC_` and `JOB_EXTRA_` jobs. By default, the extra job is not used, but could be used to, e.g., back up a particular label more often. See the [Parameters](#parameters) section for more details.
-
-### Restoring from backup
-See [GYB's wiki](https://github.com/jay0lee/got-your-back/wiki#performing-a-restore) for information on how to restore from a backup. Running the command in a container might look like: `docker run -it -e EMAIL=example@gmail.com -e NOCRON=1 -v ${PWD}/config:/config awbn/gyb /app/gyb --action restore`.
-
-Note that you must have given the OAuth token 'write' permissions to your gmail account during bootstrapping for restore to work. If you didn't, you can delete the `<email>.cfg` file from the `/config` volume to force GYB to prompt for a new token.
 
 ## Parameters
 
@@ -105,4 +115,4 @@ See the [GYB Wiki](https://github.com/jay0lee/got-your-back/wiki#running-gyb-for
   - 'Name': GYB (or anything)
 - Run `docker run -it -e EMAIL=example@gmail.com -e NOCRON=1 -v ${PWD}/config:/config awbn/gyb /app/gyb --action --action estimate --search "newer_than:7d"`
   - Select Scopes (Recommended: 1,5 for read-only backups)
-  - Visit provided URL and paste token into the console. At this point the credentials should be fully saved and the service account authorized.
+  - Visit provided URL and paste token into the console. At this point the credentials should be fully saved and the service account authorized
