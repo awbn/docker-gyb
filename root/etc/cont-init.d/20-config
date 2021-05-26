@@ -12,6 +12,7 @@ fi
 chown -R abc:abc \
 	/app \
     /config
+chmod +x /app/*
 
 # Send mail on cron error?
 if [ -n "${MAIL_FROM}" ] && [ -n "${MAIL_TO}" ]; then
@@ -19,14 +20,13 @@ if [ -n "${MAIL_FROM}" ] && [ -n "${MAIL_TO}" ]; then
     MAILERR="/app/mailonerror"
 fi
 
-# Set cron schedule
+# Log to file?
 if [ -n "${LOG_FILE}" ]; then
     echo "[Config] Logging to ${LOG_FILE}"
     LOG_FILE="| /app/timestamp >> ${LOG_FILE}"
 fi
 
-
-
+# Set cron schedule
 if [ -n "${JOB_FULL_CMD}" ] && [ -n "${JOB_FULL_CRON}" ]; then
     echo "${JOB_FULL_CRON} ${MAILERR} ${JOB_FULL_CMD} 2>&1 ${LOG_FILE}" >> /etc/crontabs/abc
 fi
