@@ -6,5 +6,11 @@ set -o pipefail
 OUT=$(exec "$@" 2>&1 | tee >(cat - >&3))
 
 if [ $? -ne 0 ]; then
-    echo -e "From: ${MAIL_FROM}\nTo: ${MAIL_TO}\nSubject: ${MAIL_SUBJECT:-Error running Got Your Back job}\n\n${OUT}" | sendmail -t
+	sendmail -t <<-EOF 
+	From: ${MAIL_FROM}
+	To: ${MAIL_TO}
+	Subject: ${MAIL_SUBJECT:-Error running Got Your Back job}
+
+	${OUT}
+	EOF
 fi

@@ -99,6 +99,7 @@ In addition to the `JOB_FULL_` job, there are also the `JOB_INC_` and `JOB_EXTRA
 | `-e JOB_EXTRA_CRON` | - | Cron syntax for when the 'Extra' job runs |
 | `-e MAIL_TO` | - | Optionally send mail to this address on cron job failure |
 | `-e MAIL_FROM` | - | Optionally send mail from this address on cron job failure |
+| `-e MAIL_SUBJECT` | Error Running Got Your Back | Subject for the optional failure notification mail |
 | `-e SMTP_HOST` | - | SMTP Host for sending failure notification mails |
 | `-e SMTP_PORT` | - | SMTP Port for sending failure notification mails |
 | `-e SMTP_USER` | - | SMTP User for sending failure notification mails |
