@@ -3,7 +3,7 @@ ARG ALPINE_VERSION=3.13
 
 FROM ghcr.io/linuxserver/baseimage-alpine:$ALPINE_VERSION
 
-LABEL org.opencontainers.image.authors="awbn"
+LABEL org.opencontainers.image.source="https://github.com/awbn/docker-gyb"
 
 ENV PYTHONUNBUFFERED=1 \
     JOB_FULL_CMD='/app/gyb --action backup' \
