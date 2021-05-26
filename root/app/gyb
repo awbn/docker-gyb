@@ -1,5 +1,13 @@
 #!/usr/bin/with-contenv bash
 
+# Make sure jobs aren't competing with each other
+exec 100< "$(realpath $0)"
+flock -n 100 || { echo "ERROR: /app/gyb is already running in another (long running?) process" && exit 1; }
+
+# Trick GYB into storing data in the docker volume. Make sure it ends in '/'
+export STATICX_PROG_PATH=/config/
+
+# Parse env variables into GYB command
 if [ -n "${MEM_LIMIT}" ]; then
   MEM_LIMIT=" --memory-limit ${MEM_LIMIT}"
 fi
@@ -14,19 +22,8 @@ fi
 
 LOCAL_FOLDER=" --local-folder ${DEST:-/config/data}"
 
-# Trick GYB into storing data in the docker volumne. Make sure it ends in '/'
-export STATICX_PROG_PATH=/config/
-
 CMD="$@${MEM_LIMIT}${EMAIL}${LOCAL_FOLDER}${DEBUG}"
 echo "[Running] python3 /app/src/gyb.py ${CMD}"
 
-# Run in app user context
-if [ $(id -u) -eq 0 ]; then
-  CTX="s6-setuidgid abc"
-fi
-
-exec ${CTX} \
-  python3 /app/src/gyb.py \
+python3 /app/src/gyb.py \
   ${CMD}
-
-#| sed "s/\/app\/src\/gyb.py/\/app\/gyb/g" # Use our helper script
