@@ -1,9 +1,5 @@
 #!/usr/bin/with-contenv bash
 
-# Make sure jobs aren't competing with each other
-exec 100< "$(realpath $0)"
-flock -n 100 || { echo "ERROR: /app/gyb is already running in another (long running?) process" && exit 1; }
-
 # Trick GYB into storing data in the docker volume. Make sure it ends in '/'
 export STATICX_PROG_PATH=/config/
 
@@ -25,5 +21,14 @@ LOCAL_FOLDER=" --local-folder ${DEST:-/config/data}"
 CMD="$@${MEM_LIMIT}${EMAIL}${LOCAL_FOLDER}${DEBUG}"
 echo "[Running] python3 /app/src/gyb.py ${CMD}"
 
+# Make sure jobs aren't competing with each other. Placing here so we output what
+# command we were trying to run
+exec 100< "$(realpath $0)"
+flock -n 100 || { \
+  echo "ERROR: /app/gyb is already running in another (long running?) process" \
+  && exit 1; \
+}
+
+# Away we go...
 python3 /app/src/gyb.py \
   ${CMD}
