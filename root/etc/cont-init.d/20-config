@@ -1,7 +1,9 @@
 #!/usr/bin/with-contenv bash
 
 # Docker is headless
-touch /app/src/nobrowser.txt
+touch \
+  /app/src/nobrowser.txt \
+  /app/src/noupdatecheck.txt
 
 # Block Short URLs?
 if [ -n "${NOSHORTURLS}" ]; then
