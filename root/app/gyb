@@ -29,6 +29,12 @@ flock -n 100 || { \
   && exit 1; \
 }
 
+if [ `id -u` = "0" ]; then
+  echo "Dropping root privs..."
+  CTX="s6-setuidgid abc "
+fi
+
 # Away we go...
-python3 /app/src/gyb.py \
+exec ${CTX} \
+  python3 /app/src/gyb.py \
   ${CMD}
