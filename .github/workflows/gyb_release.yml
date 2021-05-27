@@ -24,6 +24,8 @@ jobs:
           | jq -r '.tag_name'`
           [ "$latest" == "$tag" ] && islatest="true" || islatest="false"
           echo "::set-output name=islatest::$islatest" 
+
+          echo -e "tag: $tag\isLatest: $islatest"
       - 
         name: Checkout
         uses: actions/checkout@v2
@@ -36,7 +38,7 @@ jobs:
           flavor: |
             latest=${{ steps.release_info.outputs.islatest }}
           tags: |
-            type=semver,pattern={{major}}.{{minor}},value=${{ steps.release_info.outputs.tag }}
+            type=match,pattern=v(.*),group=1,value=${{ steps.release_info.outputs.tag }}
       - 
         name: Set up QEMU for x-platform
         uses: docker/setup-qemu-action@v1
