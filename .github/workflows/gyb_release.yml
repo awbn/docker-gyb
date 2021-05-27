@@ -21,8 +21,8 @@ jobs:
           [ -z "$tag" ] && { echo "ERROR: No tag passed to workflow'" >&2 && exit 1; }
           echo "::set-output name=tag::$tag"
 
-          latest=`curl -sX GET https://api.github.com/repos/jay0lee/got-your-back/releases/latest \
-          | jq -r '.tag_name'`
+          latest=$(curl -sX GET https://api.github.com/repos/jay0lee/got-your-back/releases/latest \
+          | jq -r '.tag_name')
           [ "$latest" == "$tag" ] && islatest="true" || islatest="false"
           echo "::set-output name=islatest::$islatest" 
 
@@ -38,11 +38,19 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
       -
+        name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
         name: Container metadata
         id: metadata
         uses: docker/metadata-action@v3
         with:
-          images: ghcr.io/awbn/gyb
+          images: |
+            ghcr.io/awbn/gyb
+            awbn/gyb
           flavor: |
             latest=${{ steps.release_info.outputs.islatest }}
           tags: |
@@ -61,5 +69,5 @@ jobs:
           context: .
           build-args: GYB_VERSION=${{ steps.release_info.outputs.tag }}
           platforms: linux/amd64,linux/arm64,linux/arm/v7
-          push: false
+          push: true
           tags: ${{ steps.metadata.outputs.tags }}
