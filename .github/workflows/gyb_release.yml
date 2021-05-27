@@ -1,0 +1,50 @@
+name: GYB Release
+
+on:
+  repository_dispatch:
+    types: [gyb-release]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps: 
+      -
+        name: Check if latest release
+        id: current_release
+        run: |
+          latest=`curl -sX GET https://api.github.com/repos/jay0lee/got-your-back/releases/latest \
+          | jq -r '.tag_name'`
+          [ "$latest" == "${{ github.event.client_payload.tag }}" ] && islatest="true" || islatest="false"
+          echo "::set-output name=islatest::$islatest" 
+      - 
+        name: Checkout
+        uses: actions/checkout@v2
+      -
+        name: Container metadata
+        id: metadata
+        uses: docker/metadata-action@v3
+        with:
+          images: ghcr.io/awbn/gyb
+          flavor: |
+            latest=${{ steps.current_release.outputs.islatest }}
+          tags: |
+            type=semver,pattern={{major}}.{{minor}},value=${{ github.event.client_payload.tag }}
+      - 
+        name: Set up QEMU for x-platform
+        uses: docker/setup-qemu-action@v1
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      -
+        name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          build-args: GYB_VERSION=${{ github.event.client_payload.tag }}
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: false
+          tags: ${{ steps.metadata.outputs.tags }}
+      -
+        name: Image digest
+        run: echo ${{ steps.docker_build.outputs.digest }}
