@@ -1,7 +1,7 @@
 # [awbn/docker-gyb](https://github.com/awbn/docker-gyb)
 A containerized version of [Got Your Back](https://github.com/jay0lee/got-your-back) to make it easy to back up your Gmail account. Can run standalone or as  full/incremental cron jobs (default).
 
-[![GYB Release](https://github.com/awbn/docker-gyb/actions/workflows/gyb_release.yml/badge.svg)](https://github.com/awbn/docker-gyb/actions/workflows/gyb_release.yml)
+[![GYB Release](https://img.shields.io/github/workflow/status/awbn/docker-gyb/GYB%20Release?style=for-the-badge&logo=github)](https://github.com/awbn/docker-gyb/actions/workflows/gyb_release.yml) [![awbn/gyb](https://img.shields.io/docker/pulls/awbn/gyb?style=for-the-badge&logo=docker)](https://hub.docker.com/r/awbn/gyb)
 
 ## Supported architectures
 This is a multiarch image which supports `linux/amd64`,`linux/arm64`, and `linux/arm/v7`.
