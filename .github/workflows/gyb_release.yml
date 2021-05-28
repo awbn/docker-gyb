@@ -30,27 +30,27 @@ jobs:
       - 
         name: Checkout
         uses: actions/checkout@v2
-      -
-        name: Login to GHCR
-        uses: docker/login-action@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
       #-
-      #  name: Login to DockerHub
+      #  name: Login to GHCR
       #  uses: docker/login-action@v1
       #  with:
-      #    username: ${{ secrets.DOCKERHUB_USER }}
-      #    password: ${{ secrets.DOCKERHUB_TOKEN }}
+      #    registry: ghcr.io
+      #    username: ${{ github.repository_owner }}
+      #    password: ${{ secrets.GITHUB_TOKEN }}
+      -
+        name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
         name: Container metadata
         id: metadata
         uses: docker/metadata-action@v3
         with:
           images: |
-            ghcr.io/awbn/gyb
-          # awbn/gyb
+            awbn/gyb
+          #  ghcr.io/awbn/gyb
           flavor: |
             latest=${{ steps.release_info.outputs.islatest }}
           tags: |
