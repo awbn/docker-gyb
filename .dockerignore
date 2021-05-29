@@ -2,4 +2,7 @@
 .github
 .gitignore
 buildx.sh
+test.sh
 README.md
+test
+container-structure-test

@@ -1,7 +1,7 @@
 # [awbn/docker-gyb](https://github.com/awbn/docker-gyb)
 A containerized version of [Got Your Back](https://github.com/jay0lee/got-your-back) to make it easy to back up your Gmail account. Can run standalone or as  full/incremental cron jobs (default).
 
-[![GYB Release](https://img.shields.io/github/workflow/status/awbn/docker-gyb/GYB%20Release?style=for-the-badge&logo=github)](https://github.com/awbn/docker-gyb/actions/workflows/gyb_release.yml) [![awbn/gyb](https://img.shields.io/docker/pulls/awbn/gyb?style=for-the-badge&logo=docker)](https://hub.docker.com/r/awbn/gyb)
+[![Build and tests](https://img.shields.io/github/workflow/status/awbn/docker-gyb/Build%20and%20test%20container%20image/main?logo=github&style=for-the-badge)](https://github.com/awbn/docker-gyb/actions/workflows/docker.yml) [![GYB Release](https://img.shields.io/github/workflow/status/awbn/docker-gyb/GYB%20Release?label=Release&logo=docker&style=for-the-badge)](https://github.com/awbn/docker-gyb/actions/workflows/gyb_release.yml) [![awbn/gyb](https://img.shields.io/docker/pulls/awbn/gyb?style=for-the-badge&logo=docker)](https://hub.docker.com/r/awbn/gyb)
 
 ## Supported architectures
 This is a multiarch image which supports `linux/amd64`,`linux/arm64`, and `linux/arm/v7`.
@@ -92,7 +92,6 @@ In addition to the `JOB_FULL_` job, there are also the `JOB_INC_` and `JOB_EXTRA
 | `-e LOG_FILE=/config/gyb.log` | - | If provided, will log cron output to this file instead of the docker log |
 | `-e MEM_LIMIT=1024M` | - | If provided, limit GYB's memory usage. Useful for large backups on memory constrained containers. Is passed to GYB as `--memory-limit`  |
 | `-e DEBUG=1` | - | If provided, pass `--debug` to GYB  |
-| `-e TZ=America/Los_Angeles` | UTC | Timezone (affects cron schedule) |
 | `-e JOB_FULL_CMD` | `/app/gyb --action backup` | Command for the 'Full' job |
 | `-e JOB_FULL_CRON` | 0 1 * * SUN | Cron syntax for when the 'Full' job runs |
 | `-e JOB_INC_CMD` | `/app/gyb --action backup --search "newer_than:3d"` | Command for the 'Incremental' job |
@@ -128,7 +127,9 @@ See the [GYB Wiki](https://github.com/jay0lee/got-your-back/wiki#running-gyb-for
   - Select Scopes (Recommended: 1,5 for read-only backups)
   - Visit provided URL and paste token into the console. At this point the credentials should be fully saved and the service account authorized
 
-## Build Docker image
+## Build and test docker image
+
+### Build
 ```bash
 # e.g. docker build -t awbn/gyb .
 docker build -t <repo>[:<tag>] .
@@ -138,4 +139,13 @@ Multi-architecture image:
 ```bash
 # e.g. ./buildx.sh -t awbn/gyb 
 ./buildx.sh -t <repo>[:<tag>]
+```
+
+### Test
+Uses [container-structure-test](https://github.com/GoogleContainerTools/container-structure-test). Will download the binary if
+it's not already on the path. Note that this does NOT extensively test GYB (other than ensuring the script can launch); it
+tests the container wrappers and functionality.
+```bash
+# e.g. ./test.sh awbn/gyb
+./test.sh <repo>[:<tag>]
 ```

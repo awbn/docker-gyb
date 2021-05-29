@@ -1,0 +1,151 @@
+  
+schemaVersion: 2.0.0
+
+fileExistenceTests:
+  -
+    name: GYB Src
+    path: /app/src/gyb.py
+    shouldExist: true
+  -
+    name: GYB wrapper
+    path: /app/gyb
+    shouldExist: true
+  -
+    name: Config directory
+    path: /config
+    shouldExist: true
+  -
+    name: Container init
+    path: /etc/cont-init.d/20-config
+    shouldExist: true
+  - 
+    name: crond
+    path: /etc/services.d/cron/run
+    shouldExist: true
+  
+metadataTest:
+  env:
+    - key: JOB_FULL_CMD
+      value: '/app/gyb --action backup'
+    - key: JOB_INC_CMD
+      value: '/app/gyb --action backup --search "newer_than:3d"'
+    - key: JOB_EXTRA_CMD
+      value: ''
+  volumes: ["/config"]
+  entrypoint: ["/init"]
+  exposedPorts: []
+
+commandTests:
+  -
+    name: Generated files check
+    setup: [["/init","true"]]
+    command: bash
+    args:
+      - -c
+      - |
+        [ -f /etc/crontabs/abc ] || echo crontabs file missing &&
+        [ -f /app/src/nobrowser.txt ] || echo nobrowser file missing &&
+        [ -f /etc/ssmtp/ssmtp.conf ] || echo ssmtp file missing
+    excludedOutput: [".*crontabs file missing.*|.*nobrowser file missing.*|.*ssmtp file missing.*"]
+  -
+    name: Cron schedule properly generated
+    setup: [["/init","true"]]
+    envVars:
+      - key: JOB_EXTRA_CRON
+        value: "* * * * *"
+      - key: JOB_EXTRA_CMD
+        value: "foo/bar/baz"
+      - key: NOCRON
+        value: 1
+    command: bash
+    args:
+      - -c
+      - grep "* * * * *" /etc/crontabs/abc | grep foo/bar/baz
+  -
+    name: GYB Wrapper script
+    setup: [["/init","true"]]
+    envVars:
+      - key: EMAIL
+        value: example@gmail.com
+      - key: NOCRON
+        value: 1
+    command: bash
+    args:
+      - -c
+      - /app/gyb --short-version
+    expectedOutput: [".*\\[Running\\] python3 /app/src/gyb.py --short-version --email example@gmail.com.*"]
+  -
+    name: Send mail on error
+    setup: [["/init","true"]]
+    envVars:
+      - key: MAIL_FROM
+        value: "foo@gmail.com"
+      - key: MAIL_TO
+        value: "bar@gmail.com"
+      - key: JOB_FULL_CRON
+        value: " "
+      - key: JOB_FULL_CMD
+        value: "/app/gyb"
+      - key: JOB_INC_CRON
+        value: " "
+      - key: JOB_INC_CMD
+        value: "true"
+      - key: NOCRON
+        value: 1
+    command: bash
+    args:
+      - -c
+      - |
+        sed -i "s/sendmail -t <<-EOF/cat <<-EOF > \/tmp\/mail.out/g" /app/mailonerror &&
+        sed -i '1s/^/#!\/usr\/bin\/with-contenv bash \n/' /etc/crontabs/abc &&
+        chmod +x /etc/crontabs/abc && # fake a cron run
+        /etc/crontabs/abc &> /dev/null &&
+        echo "*** Error mail content: ***" &&
+        cat /tmp/mail.out
+    expectedOutput: [".*From: foo@gmail.com\nTo: bar@gmail.com\nSubject: Error running Got Your Back job*."]
+  -
+    name: Log to file
+    setup: [["/init","true"]]
+    envVars:
+      - key: LOG_FILE
+        value: /tmp/gyb.log
+      - key: JOB_FULL_CRON
+        value: " "
+      - key: JOB_FULL_CMD
+        value: "/app/gyb --short-version"
+      - key: JOB_INC_CRON
+        value: " "
+      - key: JOB_INC_CMD
+        value: "true"
+      - key: NOCRON
+        value: 1
+    command: bash
+    args:
+      - -c
+      - |
+        sed -i '1s/^/#!\/usr\/bin\/with-contenv bash \n/' /etc/crontabs/abc &&
+        chmod +x /etc/crontabs/abc && # fake a cron run
+        /etc/crontabs/abc &> /dev/null &&
+        echo "*** Log file content: ***" &&
+        cat /tmp/gyb.log
+    expectedOutput: [".*\\[Running\\] python3 /app/src/gyb.py --short-version.*"]
+  -
+    name: Crond starts 
+    command: bash
+    args: 
+      - -c
+      - | 
+        (/init true > /tmp/init.log 2>&1)
+        grep "\[Cron\] Starting crond" /tmp/init.log
+  -
+    name: Crond doesn't starts 
+    command: bash
+    envVars:
+      - key: NOCRON
+        value: 1
+    args: 
+      - -c
+      - | 
+        (/init true > /tmp/init.log 2>&1)
+        grep "\[Cron\] Starting crond" /tmp/init.log || echo "No crond"
+    expectedOutput: [".*No crond.*"]
