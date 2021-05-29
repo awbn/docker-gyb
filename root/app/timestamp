@@ -1,5 +1,6 @@
 #!/bin/bash
-while read x; do
-  echo -n "[$(date +%Y-%m-%d\ %H:%M:%S)] "
-  echo $x;
+
+while read line || [ -n "$line" ]; do
+  echo -n "[$(date +%FT%TZ%z)] "
+  echo $line;
 done

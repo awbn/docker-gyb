@@ -60,7 +60,8 @@ commandTests:
     command: bash
     args:
       - -c
-      - grep "* * * * *" /etc/crontabs/abc | grep foo/bar/baz
+      - grep "foo/bar/baz" /etc/crontabs/abc
+    expectedOutput: ["\\* \\* \\* \\* \\*  foo/bar/baz  2\\>\\&1"]
   -
     name: GYB Wrapper script
     setup: [["/init","true"]]
@@ -128,7 +129,38 @@ commandTests:
         /etc/crontabs/abc &> /dev/null &&
         echo "*** Log file content: ***" &&
         cat /tmp/gyb.log
-    expectedOutput: [".*\\[Running\\] python3 /app/src/gyb.py --short-version.*"]
+    expectedOutput: ["\\[.*\\] [0-9]+\\.[0-9]+"]
+  -
+    name: Log to file AND mail on error
+    setup: [["/init","true"]]
+    envVars:
+      - key: MAIL_FROM
+        value: "foo@gmail.com"
+      - key: MAIL_TO
+        value: "bar@gmail.com"
+      - key: LOG_FILE
+        value: /tmp/gyb.log
+      - key: JOB_FULL_CRON
+        value: " "
+      - key: JOB_FULL_CMD
+        value: "/app/gyb"
+      - key: JOB_INC_CRON
+        value: " "
+      - key: JOB_INC_CMD
+        value: "true"
+      - key: NOCRON
+        value: 1
+    command: bash
+    args:
+      - -c
+      - |
+        sed -i "s/sendmail -t <<-EOF/cat <<-EOF > \/tmp\/mail.out/g" /app/mailonerror &&
+        sed -i '1s/^/#!\/usr\/bin\/with-contenv bash \n/' /etc/crontabs/abc &&
+        chmod +x /etc/crontabs/abc && # fake a cron run
+        /etc/crontabs/abc &> /dev/null &&
+        grep -q "\[.*\] ERROR: --email is required" /tmp/gyb.log || echo "Missing log file entry" &&
+        grep -q "From: foo@gmail.com" /tmp/mail.out || echo "Missing mail file entry"
+    excludedOutput: [".*Missing log file entry.*|.*Missing mail file entry.*"]
   -
     name: Crond starts 
     command: bash
@@ -136,7 +168,7 @@ commandTests:
       - -c
       - | 
         (/init true > /tmp/init.log 2>&1)
-        grep "\[Cron\] Starting crond" /tmp/init.log
+        grep -q "\[Cron\] Starting crond" /tmp/init.log
   -
     name: Crond doesn't starts 
     command: bash
@@ -147,5 +179,5 @@ commandTests:
       - -c
       - | 
         (/init true > /tmp/init.log 2>&1)
-        grep "\[Cron\] Starting crond" /tmp/init.log || echo "No crond"
+        grep -q "\[Cron\] Starting crond" /tmp/init.log || echo "No crond"
     expectedOutput: [".*No crond.*"]

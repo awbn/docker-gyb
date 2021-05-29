@@ -25,20 +25,20 @@ fi
 # Log to file?
 if [ -n "${LOG_FILE}" ]; then
     echo "[Config] Logging to ${LOG_FILE}"
-    LOG_FILE="| /app/timestamp >> ${LOG_FILE}"
+    LOG_FILE="2>&1 | /app/timestamp >> ${LOG_FILE}"
 fi
 
 # Set cron schedule
 if [ -n "${JOB_FULL_CMD}" ] && [ -n "${JOB_FULL_CRON}" ]; then
-    echo "${JOB_FULL_CRON} ${MAILERR} ${JOB_FULL_CMD} 2>&1 ${LOG_FILE}" >> /etc/crontabs/abc
+    echo "${JOB_FULL_CRON} ${MAILERR} ${JOB_FULL_CMD} ${LOG_FILE} 2>&1" >> /etc/crontabs/abc
 fi
 
 if [ -n "${JOB_INC_CMD}" ] && [ -n "${JOB_INC_CRON}" ]; then
-    echo "${JOB_INC_CRON} ${MAILERR} ${JOB_INC_CMD} 2>&1 ${LOG_FILE}" >> /etc/crontabs/abc
+    echo "${JOB_INC_CRON} ${MAILERR} ${JOB_INC_CMD} ${LOG_FILE} 2>&1" >> /etc/crontabs/abc
 fi
 
 if [ -n "${JOB_EXTRA_CMD}" ] && [ -n "${JOB_EXTRA_CRON}" ]; then
-    echo "${JOB_EXTRA_CRON} ${MAILERR} ${JOB_EXTRA_CMD} 2>&1 ${LOG_FILE}" >> /etc/crontabs/abc
+    echo "${JOB_EXTRA_CRON} ${MAILERR} ${JOB_EXTRA_CMD} ${LOG_FILE} 2>&1" >> /etc/crontabs/abc
 fi
 
 # No real point in running root crontab
