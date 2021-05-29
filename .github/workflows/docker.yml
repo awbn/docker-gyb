@@ -22,7 +22,7 @@ jobs:
           context: .
           load: true
           platforms: linux/amd64
-          tags: docker.io/awbn/gyb-test
+          tags: awbn/gyb-test
       -
         name: Test
         uses: plexsystems/container-structure-test-action@v0.2.0
