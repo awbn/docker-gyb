@@ -127,7 +127,7 @@ See the [GYB Wiki](https://github.com/jay0lee/got-your-back/wiki#running-gyb-for
   - Select Scopes (Recommended: 1,5 for read-only backups)
   - Visit provided URL and paste token into the console. At this point the credentials should be fully saved and the service account authorized
 
-## Build and test docker image
+## Build, test, and release docker image
 
 ### Build
 ```bash
@@ -148,4 +148,11 @@ tests the container wrappers and functionality.
 ```bash
 # e.g. ./test.sh awbn/gyb
 ./test.sh <repo>[:<tag>]
+```
+
+### Release
+`release.sh` is a helper script for [re]publishing docker images against GYB releases using remote GitHub workflows. Useful if the code in the repo changes and you want to publish an updated docker image against a GYB release. Uses the [GitHub cli](https://cli.github.com/). Note: must have contributor access to [awbn/docker-gyb](https://github.com/awbn/docker-gyb).
+```bash
+# e.g. ./release.sh v1.42 v1.50
+./release.sh <tag...>
 ```

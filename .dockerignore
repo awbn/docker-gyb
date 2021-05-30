@@ -3,6 +3,7 @@
 .gitignore
 buildx.sh
 test.sh
+release.sh
 README.md
 test
 container-structure-test
