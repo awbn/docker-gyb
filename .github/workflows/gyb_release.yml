@@ -26,13 +26,16 @@ jobs:
           [ "$latest" == "$tag" ] && islatest="true" || islatest="false"
           echo "::set-output name=islatest::$islatest" 
 
-          echo -e "tag: $tag\nisLatest: $islatest"
+          rev=$(curl -sX GET "https://api.github.com/repos/jay0lee/got-your-back/git/ref/tags/$tag" \
+          | jq -er '.object.sha') || { echo "ERROR: Could not find a tagged GYB release for '$tag'"; exit 1; }
+          echo "::set-output name=revision::$rev"
+
+          echo -e "tag: $tag\nrevision: $rev\nisLatest: $islatest"
       - 
         name: Checkout
         uses: actions/checkout@v2
       -
         name: Build a single platform for testing
-        id: docker_build
         uses: docker/build-push-action@v2
         with:
           context: .
@@ -71,6 +74,12 @@ jobs:
             latest=${{ steps.release_info.outputs.islatest }}
           tags: |
             type=match,pattern=v(.*),group=1,value=${{ steps.release_info.outputs.tag }}
+          labels: |
+            org.opencontainers.image.title=awbn/gyb
+            org.opencontainers.image.documentation=https://github.com/awbn/docker-gyb/blob/main/README.md
+            gyb.source=https://github.com/jay0lee/got-your-back
+            gyb.version=${{ steps.release_info.outputs.tag }}
+            gyb.revision=${{ steps.release_info.outputs.revision }}
       - 
         name: Set up QEMU for x-platform
         uses: docker/setup-qemu-action@v1
@@ -86,4 +95,5 @@ jobs:
           build-args: GYB_VERSION=${{ steps.release_info.outputs.tag }}
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
+          labels: ${{ steps.meta.outputs.labels }}
           tags: ${{ steps.metadata.outputs.tags }}

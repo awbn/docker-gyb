@@ -7,7 +7,7 @@ A containerized version of [Got Your Back](https://github.com/jay0lee/got-your-b
 This is a multiarch image which supports `linux/amd64`,`linux/arm64`, and `linux/arm/v7`.
 
 ## Tags
-Tags correspond with [Got Your Back releases](https://github.com/jay0lee/got-your-back/releases). `:latest` refers to the latest published release and all releases since 1.34 are available as individual tags (e.g. `awbn/gyb:1.40` contains GYB v1.40).
+Tags correspond with [Got Your Back releases](https://github.com/jay0lee/got-your-back/releases). `:latest` refers to the latest published release and all releases since 1.40 are available as individual tags (e.g. `awbn/gyb:1.40` contains GYB v1.40).
 
 ## Usage
 [GYB](https://github.com/jay0lee/got-your-back) requires some bootstrapping to create a new project before you can run. For complete bootstrapping steps, see the [GYB Wiki](https://github.com/jay0lee/got-your-back/wiki#running-gyb-for-the-first-time).
