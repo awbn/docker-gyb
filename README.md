@@ -80,6 +80,9 @@ To run the full job at a different schedule, set the `JOB_FULL_CRON` env variabl
 
 In addition to the `JOB_FULL_` job, there are also the `JOB_INC_` and `JOB_EXTRA_` jobs. By default, the extra job is not used, but could be used to, e.g., back up a particular label more often. See the [Parameters](#parameters) section for more details.
 
+## File permissions
+By default the container creates all new files in `/config` with a umask of `077` (`rw` for the owner, no permissions for group/others). This is because sensitive files containing auth tokens, etc will get created. However, this can cause issues if you swap users or if you access the files outside of the container. If you want the files created to be more widely accessible, you can pass a different umask (e.g., `022`: `rw` for owner `r` for everyone else, or `100`: `rw` for everyone) via the `UMASK` environment variable. Make sure you understand how [umask works](https://en.wikipedia.org/wiki/Umask) before relying on this for security.
+
 ## Parameters
 
 | Parameter | Default | Function |
@@ -89,6 +92,7 @@ In addition to the `JOB_FULL_` job, there are also the `JOB_INC_` and `JOB_EXTRA
 | `-e NOCRON=1` | - | If set, don't start crond. Useful for one-off container runs (e.g., GYB project creation) or actions that may take a long time to run (e.g., restores) |
 | `-e NOSHORTURLS=1` | - | If set, block the GYB URL shortener |
 | `-e DEST=/config/data` | `/config/data` | Destination for backups. Is passed to GYB as `--local-folder` |
+| `-e UMASK=077` | 077 | umask for files created during a GYB run |
 | `-e LOG_FILE=/config/gyb.log` | - | If provided, will log cron output to this file instead of the docker log |
 | `-e MEM_LIMIT=1024M` | - | If provided, limit GYB's memory usage. Useful for large backups on memory constrained containers. Is passed to GYB as `--memory-limit`  |
 | `-e DEBUG=1` | - | If provided, pass `--debug` to GYB  |

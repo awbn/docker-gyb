@@ -13,4 +13,4 @@ if ! command -v container-structure-test &> /dev/null ; then
   chmod +x ./container-structure-test
 fi
 
-exec container-structure-test test --config ./test/tests.yml --image $@
+container-structure-test test --config ./test/tests.yml --image $@

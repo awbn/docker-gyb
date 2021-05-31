@@ -9,7 +9,8 @@ ENV PYTHONUNBUFFERED=1 \
     JOB_INC_CMD='/app/gyb --action backup --search "newer_than:3d"' \
     JOB_INC_CRON='0 1 * * MON-SAT' \
     JOB_EXTRA_CMD='' \
-    JOB_EXTRA_CRON=''
+    JOB_EXTRA_CRON='' \
+    UMASK=077
 
 RUN \
   echo "**** install packages ****" && \ 

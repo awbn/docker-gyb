@@ -1,4 +1,3 @@
-  
 schemaVersion: 2.0.0
 
 fileExistenceTests:
@@ -73,8 +72,8 @@ commandTests:
     command: bash
     args:
       - -c
-      - /app/gyb --short-version
-    expectedOutput: [".*\\[Running\\] python3 /app/src/gyb.py --short-version --email example@gmail.com.*"]
+      - /app/gyb --version
+    expectedOutput: [".*\\[Running\\] python3 /app/src/gyb.py --version --email example@gmail.com.*"]
   -
     name: Send mail on error
     setup: [["/init","true"]]
@@ -162,15 +161,30 @@ commandTests:
         grep -q "From: foo@gmail.com" /tmp/mail.out || echo "Missing mail file entry"
     excludedOutput: [".*Missing log file entry.*|.*Missing mail file entry.*"]
   -
+    name: File Permissions
+    envVars:
+      - key: EMAIL
+        value: example@gmail.com
+      - key: NOCRON
+        value: 1
+    command: bash
+    args:
+      - -c
+      - |
+        (/init true &> /dev/null) # Rerun init to get permissions on this execution
+        /app/gyb --version &> /dev/null
+        stat -c "%a" /config/lastcheck.txt
+    expectedOutput: ["600"]
+  -
     name: Crond starts 
     command: bash
     args: 
       - -c
       - | 
-        (/init true > /tmp/init.log 2>&1)
+        (/init true &> /tmp/init.log)
         grep -q "\[Cron\] Starting crond" /tmp/init.log
   -
-    name: Crond doesn't starts 
+    name: Crond can be skipped
     command: bash
     envVars:
       - key: NOCRON
@@ -178,6 +192,6 @@ commandTests:
     args: 
       - -c
       - | 
-        (/init true > /tmp/init.log 2>&1)
+        (/init true &> /tmp/init.log)
         grep -q "\[Cron\] Starting crond" /tmp/init.log || echo "No crond"
     expectedOutput: [".*No crond.*"]
