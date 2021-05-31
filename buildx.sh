@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BUILDER_NAME="gyb-multiarch"
+BUILDER_NAME="gyb-multiplat"
 
 # Clean up stale builders
 if docker buildx inspect ${BUILDER_NAME} > /dev/null; then

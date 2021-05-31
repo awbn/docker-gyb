@@ -3,8 +3,8 @@ A containerized version of [Got Your Back](https://github.com/jay0lee/got-your-b
 
 [![Build and tests](https://img.shields.io/github/workflow/status/awbn/docker-gyb/Build%20and%20test%20container%20image/main?logo=github&style=for-the-badge)](https://github.com/awbn/docker-gyb/actions/workflows/docker.yml) [![GYB Release](https://img.shields.io/github/workflow/status/awbn/docker-gyb/GYB%20Release?label=Release&logo=docker&style=for-the-badge)](https://github.com/awbn/docker-gyb/actions/workflows/gyb_release.yml) [![awbn/gyb](https://img.shields.io/docker/pulls/awbn/gyb?style=for-the-badge&logo=docker)](https://hub.docker.com/r/awbn/gyb)
 
-## Supported architectures
-This is a multiarch image which supports `linux/amd64`,`linux/arm64`, and `linux/arm/v7`.
+## Supported platforms
+This is a multi-platform image which supports `linux/amd64`,`linux/arm64`, and `linux/arm/v7`.
 
 ## Tags
 Tags correspond with [Got Your Back releases](https://github.com/jay0lee/got-your-back/releases). `:latest` refers to the latest published release and all releases since 1.40 are available as individual tags (e.g. `awbn/gyb:1.40` contains GYB v1.40).
@@ -139,7 +139,7 @@ See the [GYB Wiki](https://github.com/jay0lee/got-your-back/wiki#running-gyb-for
 docker build -t <repo>[:<tag>] .
 ```
 
-Multi-architecture image:
+Multi-platform image:
 ```bash
 # e.g. ./buildx.sh -t awbn/gyb 
 ./buildx.sh -t <repo>[:<tag>]
