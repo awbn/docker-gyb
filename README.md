@@ -128,8 +128,11 @@ See the [GYB Wiki](https://github.com/jay0lee/got-your-back/wiki#running-gyb-for
   - 'Application Type': Desktop App
   - 'Name': GYB (or anything)
 - Run `docker run -it -e EMAIL=example@gmail.com -e NOCRON=1 -v ${PWD}/config:/config awbn/gyb /app/gyb --action --action estimate --search "newer_than:7d"`
-  - Select Scopes (Recommended: 1,5 for read-only backups)
-  - Visit provided URL and paste token into the console. At this point the credentials should be fully saved and the service account authorized
+  - Select Scopes (Recommended: 1,6 for read-only backups; Gmail read-only and storage quota)
+  - Visit provided URL and paste token into the console
+    - Google may warn you that the app is not verified; this is the app that you created in the step above (to verify: click the name of the app and check that the email matches what you entered as the developer email above). You're giving yourself permissions to your own data
+  - At this point the credentials should be fully saved and the service account authorized
+    - Note: If you are using an 'external' app with a status of 'testing' the tokens expire every seven days and need to be manually refereshed. See [this issue](https://github.com/jay0lee/got-your-back/issues/282) and [Google's documentation](https://support.google.com/cloud/answer/10311615#zippy=%2Ctesting)
 
 ## Build, test, and release docker image
 
