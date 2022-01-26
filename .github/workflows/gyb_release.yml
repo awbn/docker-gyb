@@ -17,16 +17,17 @@ jobs:
         name: Check GYB release info
         id: release_info
         run: |
+          gyb_repo="GAM-team/got-your-back"
           [ -z "${{ github.event.client_payload.tag }}" ] && tag="${{ github.event.inputs.tag }}" || tag="${{ github.event.client_payload.tag }}"
           [ -z "$tag" ] && { echo "ERROR: No tag passed to workflow'" >&2 && exit 1; }
           echo "::set-output name=tag::$tag"
 
-          latest=$(curl -sX GET https://api.github.com/repos/jay0lee/got-your-back/releases/latest \
+          latest=$(curl -sX GET https://api.github.com/repos/$gyb_repo/releases/latest \
           | jq -r '.tag_name')
           [ "$latest" == "$tag" ] && islatest="true" || islatest="false"
           echo "::set-output name=islatest::$islatest" 
 
-          rev=$(curl -sX GET "https://api.github.com/repos/jay0lee/got-your-back/git/ref/tags/$tag" \
+          rev=$(curl -sX GET "https://api.github.com/repos/$gyb_repo/git/ref/tags/$tag" \
           | jq -er '.object.sha') || { echo "ERROR: Could not find a tagged GYB release for '$tag'"; exit 1; }
           echo "::set-output name=revision::$rev"
 

@@ -12,6 +12,8 @@ ENV PYTHONUNBUFFERED=1 \
     JOB_EXTRA_CRON='' \
     UMASK=077
 
+ARG GYB_REPO=GAM-team/got-your-back
+
 RUN \
   echo "**** install packages ****" && \ 
   apk add --no-cache \
@@ -20,12 +22,12 @@ RUN \
     py3-pip \
     ssmtp && \
   if [ -z "${GYB_VERSION}" ]; then \
-    GYB_VERSION=$(curl -sX GET https://api.github.com/repos/jay0lee/got-your-back/releases/latest \
+    GYB_VERSION=$(curl -sX GET https://api.github.com/repos/${GYB_REPO}/releases/latest \
     | jq -r '.tag_name'); \
   fi && \
   echo "**** install Got-Your-Back ${GYB_VERSION} ****" && \  
   mkdir -p /app/src && \ 
-  curl -sLX GET https://github.com/jay0lee/got-your-back/archive/refs/tags/${GYB_VERSION}.tar.gz \
+  curl -sLX GET https://github.com/${GYB_REPO}/archive/refs/tags/${GYB_VERSION}.tar.gz \
     | tar -zx --strip-components=1 -C /app/src \
     || { echo "ERROR: Could not find GYB Release '${GYB_VERSION}'" >&2 && exit 1; } && \
   pip3 install --no-cache-dir --requirement /app/src/requirements.txt
