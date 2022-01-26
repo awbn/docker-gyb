@@ -1,4 +1,4 @@
-FROM ghcr.io/linuxserver/baseimage-alpine:3.13
+FROM ghcr.io/linuxserver/baseimage-alpine:3.15-version-a0482dc2
 
 ARG GYB_VERSION
 LABEL org.opencontainers.image.source="https://github.com/awbn/docker-gyb"
