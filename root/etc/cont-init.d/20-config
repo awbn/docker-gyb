@@ -30,7 +30,7 @@ fi
 
 # Set cron schedule
 if [ -n "${JOB_FULL_CMD}" ] && [ -n "${JOB_FULL_CRON}" ]; then
-    echo "${JOB_FULL_CRON} ${MAILERR} ${JOB_FULL_CMD} ${LOG_FILE} 2>&1" >> /etc/crontabs/abc
+    echo "${JOB_FULL_CRON} ${MAILERR} ${JOB_FULL_CMD} ${LOG_FILE} 2>&1" > /etc/crontabs/abc
 fi
 
 if [ -n "${JOB_INC_CMD}" ] && [ -n "${JOB_INC_CRON}" ]; then
