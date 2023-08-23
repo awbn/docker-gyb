@@ -23,7 +23,7 @@ fileExistenceTests:
     shouldExist: true
   
 metadataTest:
-  env:
+  envVars:
     - key: JOB_FULL_CMD
       value: '/app/gyb --action backup'
     - key: JOB_INC_CMD
