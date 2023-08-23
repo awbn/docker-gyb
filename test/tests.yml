@@ -15,11 +15,11 @@ fileExistenceTests:
     shouldExist: true
   -
     name: Container init
-    path: /etc/cont-init.d/20-config
+    path: /etc/s6-overlay/s6-rc.d/init-gyb/run
     shouldExist: true
   - 
     name: crond
-    path: /etc/services.d/cron/run
+    path: /etc/s6-overlay/s6-rc.d/svc-cron/run
     shouldExist: true
   
 metadataTest:
