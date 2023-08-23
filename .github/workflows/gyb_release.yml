@@ -46,7 +46,7 @@ jobs:
           tags: awbn/gyb-test
       -
         name: Test
-        uses: plexsystems/container-structure-test-action@v0.2.0
+        uses: plexsystems/container-structure-test-action@v0.3.0
         with:
           image: awbn/gyb-test:latest
           config: test/tests.yml
