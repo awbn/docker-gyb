@@ -1,7 +1,7 @@
 # [awbn/docker-gyb](https://github.com/awbn/docker-gyb)
 A containerized version of [Got Your Back](https://github.com/jay0lee/got-your-back) to make it easy to back up your Gmail account. Can run standalone or as  full/incremental cron jobs (default).
 
-[![Build and tests](https://img.shields.io/github/workflow/status/awbn/docker-gyb/Build%20and%20test%20container%20image/main?logo=github&style=for-the-badge)](https://github.com/awbn/docker-gyb/actions/workflows/docker.yml) [![GYB Release](https://img.shields.io/github/workflow/status/awbn/docker-gyb/GYB%20Release?label=Release&logo=docker&style=for-the-badge)](https://github.com/awbn/docker-gyb/actions/workflows/gyb_release.yml) [![awbn/gyb](https://img.shields.io/docker/pulls/awbn/gyb?style=for-the-badge&logo=docker)](https://hub.docker.com/r/awbn/gyb)
+[![Build and tests](https://img.shields.io/github/actions/workflow/status/awbn/docker-gyb/docker.yml?branch=main&logo=github&style=for-the-badge)](https://github.com/awbn/docker-gyb/actions/workflows/docker.yml) [![GYB Release](https://img.shields.io/github/actions/workflow/status/awbn/docker-gyb/gyb_release.yml?branch=main&label=Release&logo=docker&style=for-the-badge)](https://github.com/awbn/docker-gyb/actions/workflows/gyb_release.yml) [![awbn/gyb](https://img.shields.io/docker/pulls/awbn/gyb?style=for-the-badge&logo=docker)](https://hub.docker.com/r/awbn/gyb)
 
 ## Supported platforms
 This is a multi-platform image which supports `linux/amd64`,`linux/arm64`, and `linux/arm/v7`.
