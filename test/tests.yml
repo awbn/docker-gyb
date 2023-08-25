@@ -195,8 +195,3 @@ commandTests:
       - -c
       - grep -q "\[Cron\] Starting crond" /var/log/svc-cron-init || echo "No crond"
     expectedOutput: [".*No crond.*"]
-
-# Env variable loading workaround
-containerRunOptions:
-  envVars:
-    - PLACEHOLDER
