@@ -91,7 +91,8 @@ By default the container creates all new files in `/config` with a umask of `077
 | `-e TZ=Americas/Los_Angeles` | UTC | Timezone (affects cron schedule) |
 | `-e NOCRON=1` | - | If set, don't start crond. Useful for one-off container runs (e.g., GYB project creation) or actions that may take a long time to run (e.g., restores) |
 | `-e NOSHORTURLS=1` | - | If set, block the GYB URL shortener |
-| `-e DEST=/config/data` | `/config/data` | Destination for backups. Is passed to GYB as `--local-folder` |
+| `-e CONFIG_DIR=/config` | `/config` | Directory for GYB config (ideally volume mounted). Is passed to GYB as `--config-folder` |
+| `-e DEST_DIR=/config/data` | `/config/data` | Destination for backups (ideally volume mounted). Is passed to GYB as `--local-folder` |
 | `-e UMASK=077` | 077 | umask for files created during a GYB run |
 | `-e LOG_FILE=/config/gyb.log` | - | If provided, will log cron output to this file instead of the docker log |
 | `-e MEM_LIMIT=1024M` | - | If provided, limit GYB's memory usage. Useful for large backups on memory constrained containers. Is passed to GYB as `--memory-limit`  |

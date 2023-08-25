@@ -10,7 +10,9 @@ ENV PYTHONUNBUFFERED=1 \
     JOB_INC_CRON='0 1 * * MON-SAT' \
     JOB_EXTRA_CMD='' \
     JOB_EXTRA_CRON='' \
-    UMASK=077
+    UMASK=077 \
+    CONFIG_DIR=/config \
+    DEST_DIR=/config/data
 
 ARG GYB_REPO=GAM-team/got-your-back
 

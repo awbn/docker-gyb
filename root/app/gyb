@@ -2,7 +2,12 @@
 set -eo pipefail
 
 # Trick GYB into storing data in the docker volume. Make sure it ends in '/'
-export STATICX_PROG_PATH=/config/
+export STATICX_PROG_PATH="$CONFIG_DIR/"
+
+# Backwards compatibility
+if [ -n "${DEST}" ]; then
+  DEST_DIR=$DEST
+fi
 
 # Parse env variables into GYB command
 if [ -n "${MEM_LIMIT}" ]; then
@@ -17,9 +22,10 @@ if [ -n "${DEBUG}" ]; then
   DEBUG=" --debug"
 fi
 
-LOCAL_FOLDER=" --local-folder ${DEST:-/config/data}"
+CONFIG_FLDR=" --config-folder $CONFIG_DIR"
+LOCAL_FLDR=" --local-folder $DEST_DIR"
 
-CMD="python3 /app/src/gyb.py $@${MEM_LIMIT}${EMAIL}${LOCAL_FOLDER}${DEBUG}"
+CMD="python3 /app/src/gyb.py $@${MEM_LIMIT}${EMAIL}${CONFIG_FLDR}${LOCAL_FLDR}${DEBUG}"
 echo "[Running] ${CMD}"
 
 # Make sure jobs aren't competing with each other. Placing here so we output

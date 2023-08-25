@@ -1,24 +1,19 @@
 schemaVersion: 2.0.0
 
 fileExistenceTests:
-  -
-    name: GYB Src
+  - name: GYB Src
     path: /app/src/gyb.py
     shouldExist: true
-  -
-    name: GYB wrapper
+  - name: GYB wrapper
     path: /app/gyb
     shouldExist: true
-  -
-    name: Config directory
+  - name: Config directory
     path: /config
     shouldExist: true
-  -
-    name: Container init
+  - name: Container init
     path: /etc/s6-overlay/s6-rc.d/init-gyb/run
     shouldExist: true
-  - 
-    name: crond
+  - name: crond
     path: /etc/s6-overlay/s6-rc.d/svc-cron/run
     shouldExist: true
   
@@ -30,13 +25,16 @@ metadataTest:
       value: '/app/gyb --action backup --search "newer_than:3d"'
     - key: JOB_EXTRA_CMD
       value: ''
+    - key: CONFIG_DIR
+      value: '/config'
+    - key: DEST_DIR
+      value: '/config/data'
   volumes: ["/config"]
   entrypoint: ["/init"]
   exposedPorts: []
 
 commandTests:
-  -
-    name: Generated files check
+  - name: Generated files check
     setup: [["/init","true"]]
     command: bash
     args:
@@ -46,12 +44,12 @@ commandTests:
         [ -f /app/src/nobrowser.txt ] || echo nobrowser file missing &&
         [ -f /etc/ssmtp/ssmtp.conf ] || echo ssmtp file missing
     excludedOutput: [".*crontabs file missing.*|.*nobrowser file missing.*|.*ssmtp file missing.*"]
-  -
-    name: Cron schedule properly generated
+  
+  - name: Cron schedule properly generated
     setup: [["/init","true"]]
     envVars:
-      - key: JOB_EXTRA_CRON
-        value: "* * * * *"
+      - key: 'JOB_EXTRA_CRON'
+        value: '* * * * *'
       - key: JOB_EXTRA_CMD
         value: "foo/bar/baz"
       - key: NOCRON
@@ -61,8 +59,8 @@ commandTests:
       - -c
       - grep "foo/bar/baz" /etc/crontabs/abc
     expectedOutput: ["\\* \\* \\* \\* \\*  foo/bar/baz  2\\>\\&1"]
-  -
-    name: GYB Wrapper script
+  
+  - name: GYB Wrapper script
     setup: [["/init","true"]]
     envVars:
       - key: EMAIL
@@ -74,8 +72,8 @@ commandTests:
       - -c
       - /app/gyb --version
     expectedOutput: [".*\\[Running\\] python3 /app/src/gyb.py --version --email example@gmail.com.*"]
-  -
-    name: Send mail on error
+  
+  - name: Send mail on error
     setup: [["/init","true"]]
     envVars:
       - key: MAIL_FROM
@@ -98,13 +96,14 @@ commandTests:
       - |
         sed -i "s/sendmail -t <<-EOF/cat <<-EOF > \/tmp\/mail.out/g" /app/mailonerror &&
         sed -i '1s/^/#!\/usr\/bin\/with-contenv bash \n/' /etc/crontabs/abc &&
-        chmod +x /etc/crontabs/abc && # fake a cron run
+        chmod +x /etc/crontabs/abc &&
         /etc/crontabs/abc &> /dev/null &&
         echo "*** Error mail content: ***" &&
-        cat /tmp/mail.out
+        cat /tmp/mail.out &&
+        echo "*** End Error mail content ***"
     expectedOutput: [".*From: foo@gmail.com\nTo: bar@gmail.com\nSubject: Error running Got Your Back job*."]
-  -
-    name: Log to file
+  
+  - name: Log to file
     setup: [["/init","true"]]
     envVars:
       - key: LOG_FILE
@@ -124,13 +123,14 @@ commandTests:
       - -c
       - |
         sed -i '1s/^/#!\/usr\/bin\/with-contenv bash \n/' /etc/crontabs/abc &&
-        chmod +x /etc/crontabs/abc && # fake a cron run
+        chmod +x /etc/crontabs/abc &&
         /etc/crontabs/abc &> /dev/null &&
         echo "*** Log file content: ***" &&
-        cat /tmp/gyb.log
+        cat /tmp/gyb.log &&
+        echo "*** End log file content ***"
     expectedOutput: ["\\[.*\\] [0-9]+\\.[0-9]+"]
-  -
-    name: Log to file AND mail on error
+
+  - name: Log to file AND mail on error
     setup: [["/init","true"]]
     envVars:
       - key: MAIL_FROM
@@ -155,43 +155,48 @@ commandTests:
       - |
         sed -i "s/sendmail -t <<-EOF/cat <<-EOF > \/tmp\/mail.out/g" /app/mailonerror &&
         sed -i '1s/^/#!\/usr\/bin\/with-contenv bash \n/' /etc/crontabs/abc &&
-        chmod +x /etc/crontabs/abc && # fake a cron run
+        chmod +x /etc/crontabs/abc &&
         /etc/crontabs/abc &> /dev/null &&
         grep -q "\[.*\] ERROR: --email is required" /tmp/gyb.log || echo "Missing log file entry" &&
         grep -q "From: foo@gmail.com" /tmp/mail.out || echo "Missing mail file entry"
     excludedOutput: [".*Missing log file entry.*|.*Missing mail file entry.*"]
-  -
-    name: File Permissions
+  
+  - name: File Permissions
+    setup: [["/init","true"]]
     envVars:
       - key: EMAIL
         value: example@gmail.com
       - key: NOCRON
         value: 1
-    command: bash
-    args:
-      - -c
-      - |
-        (/init true &> /dev/null) # Rerun init to get permissions on this execution
-        /app/gyb --version &> /dev/null
-        stat -c "%a" /config/lastcheck.txt
-    expectedOutput: ["600"]
-  -
-    name: Crond starts 
+      - key: CONFIG_DIR
+        value: /tmp
     command: bash
     args: 
       - -c
       - | 
-        (/init true &> /tmp/init.log)
-        grep -q "\[Cron\] Starting crond" /tmp/init.log
-  -
-    name: Crond can be skipped
+        /app/gyb --version > /dev/null &&
+        stat -c "%a" /tmp/lastcheck.txt
+    expectedOutput: ["600"]
+
+  - name: Crond starts 
+    setup: [["/init","true"]]
+    command: bash
+    args: 
+      - -c
+      - grep -q "\[Cron\] Starting crond" /var/log/svc-cron-init
+ 
+  - name: Crond can be skipped
+    setup: [["/init","true"]]
     command: bash
     envVars:
       - key: NOCRON
         value: 1
     args: 
       - -c
-      - | 
-        (/init true &> /tmp/init.log)
-        grep -q "\[Cron\] Starting crond" /tmp/init.log || echo "No crond"
+      - grep -q "\[Cron\] Starting crond" /var/log/svc-cron-init || echo "No crond"
     expectedOutput: [".*No crond.*"]
+
+# Env variable loading workaround
+containerRunOptions:
+  envVars:
+    - PLACEHOLDER
