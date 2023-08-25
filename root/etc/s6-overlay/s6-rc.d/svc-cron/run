@@ -1,0 +1,6 @@
+#!/usr/bin/with-contenv bash
+
+if [ -z ${NOCRON+x} ]; then
+  echo "[Cron] Starting crond" | tee /var/log/svc-cron-init
+  exec /usr/sbin/crond -f -S -l 5 -c /etc/crontabs
+fi

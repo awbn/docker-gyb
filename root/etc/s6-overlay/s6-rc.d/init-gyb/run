@@ -1,0 +1,72 @@
+#!/usr/bin/with-contenv bash
+exec &> >(tee -a /var/log/init-gyb)
+
+echo "[Config] Starting GYB Config..."
+
+# Docker is headless and should control updates
+touch \
+  /app/src/nobrowser.txt \
+  /app/src/noupdatecheck.txt
+
+# Block Short URLs?
+if [ -n "${NOSHORTURLS}" ]; then
+  echo "[Config] Blocking GYB short urls"
+  echo "127.0.0.1  gyb-shortn.jaylee.us" >> /etc/hosts
+fi
+
+# Backwards compatibility
+if [ -n "${DEST}" ]; then
+  DEST_DIR=$DEST
+fi
+
+# Create directory structure
+echo "[Config] Ensuring '$CONFIG_DIR' and '$DEST_DIR' exist"
+mkdir -p $CONFIG_DIR
+mkdir -p $DEST_DIR
+
+# Fix permissions
+lsiown -R abc:abc \
+  /app \
+  $CONFIG_DIR \
+  $DEST_DIR
+chmod +x /app/*
+
+# Send mail on cron error?
+if [ -n "${MAIL_FROM}" ] && [ -n "${MAIL_TO}" ]; then
+  echo "[Config] Sending mail to ${MAIL_TO} on cron errors"
+  MAILERR="/app/mailonerror"
+fi
+
+# Log to file?
+if [ -n "${LOG_FILE}" ]; then
+  echo "[Config] Logging to ${LOG_FILE}"
+  LOG_FILE="2>&1 | /app/timestamp >> ${LOG_FILE}"
+fi
+
+# Set cron schedule
+if [ -n "${JOB_FULL_CMD}" ] && [ -n "${JOB_FULL_CRON}" ]; then
+  echo "${JOB_FULL_CRON} ${MAILERR} ${JOB_FULL_CMD} ${LOG_FILE} 2>&1" > /etc/crontabs/abc
+fi
+
+if [ -n "${JOB_INC_CMD}" ] && [ -n "${JOB_INC_CRON}" ]; then
+  echo "${JOB_INC_CRON} ${MAILERR} ${JOB_INC_CMD} ${LOG_FILE} 2>&1" >> /etc/crontabs/abc
+fi
+
+if [ -n "${JOB_EXTRA_CMD}" ] && [ -n "${JOB_EXTRA_CRON}" ]; then
+  echo "${JOB_EXTRA_CRON} ${MAILERR} ${JOB_EXTRA_CMD} ${LOG_FILE} 2>&1" >> /etc/crontabs/abc
+fi
+
+# No real point in running root crontab
+crontab -r root
+
+# Set up mail
+cat << EOF > /etc/ssmtp/ssmtp.conf
+mailhub=${SMTP_HOST}:${SMTP_PORT}
+AuthUser=${SMTP_USER}
+AuthPass=${SMTP_PASS}
+FromLineOverride=YES
+UseSTARTTLS=YES
+UseTLS=${SMTP_TLS:-YES}
+EOF
+
+echo "[Config] GYB Config Complete"
