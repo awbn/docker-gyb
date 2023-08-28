@@ -18,7 +18,7 @@ if [[ "$*" == *"--push"* ]]; then
 fi
 
 if [ -z "$PLATFORMS" ]; then
-    PLATFORMS="linux/amd64,linux/arm64,linux/arm/v7"
+    PLATFORMS="linux/amd64,linux/arm64"
 fi
 
 docker buildx build --platform $PLATFORMS . $*
