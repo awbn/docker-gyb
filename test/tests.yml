@@ -124,10 +124,11 @@ commandTests:
       - |
         sed -i '1s/^/#!\/usr\/bin\/with-contenv bash \n/' /etc/crontabs/abc &&
         chmod +x /etc/crontabs/abc &&
-        /etc/crontabs/abc &> /dev/null &&
+        s6-setuidgid abc /etc/crontabs/abc &> /dev/null &&
         echo "*** Log file content: ***" &&
         cat /tmp/gyb.log &&
-        echo "*** End log file content ***"
+        echo "*** End log file content ***" &&
+        grep -q "/tmp/gyb.log" /tmp/logrotate.conf
     expectedOutput: ["\\[.*\\] [0-9]+\\.[0-9]+"]
 
   - name: Log to file AND mail on error
@@ -156,7 +157,7 @@ commandTests:
         sed -i "s/sendmail -t <<-EOF/cat <<-EOF > \/tmp\/mail.out/g" /app/mailonerror &&
         sed -i '1s/^/#!\/usr\/bin\/with-contenv bash \n/' /etc/crontabs/abc &&
         chmod +x /etc/crontabs/abc &&
-        /etc/crontabs/abc &> /dev/null &&
+        s6-setuidgid abc /etc/crontabs/abc &> /dev/null &&
         grep -q "\[.*\] ERROR: --email is required" /tmp/gyb.log || echo "Missing log file entry" &&
         grep -q "From: foo@gmail.com" /tmp/mail.out || echo "Missing mail file entry"
     excludedOutput: [".*Missing log file entry.*|.*Missing mail file entry.*"]
@@ -178,12 +179,14 @@ commandTests:
         stat -c "%a" /tmp/lastcheck.txt
     expectedOutput: ["600"]
 
+  # Ideally, we'd look to ensure process is running (ps -e | grep -q crond).
+  # Doesn't work with CST; look for indirect indiciation of cron instead
   - name: Crond starts 
     setup: [["/init","true"]]
     command: bash
     args: 
       - -c
-      - grep -q "\[Cron\] Starting crond" /var/log/svc-cron-init
+      - grep -q "\[Cron\] Starting crond" /var/log/svc-cron
  
   - name: Crond can be skipped
     setup: [["/init","true"]]
@@ -193,5 +196,5 @@ commandTests:
         value: 1
     args: 
       - -c
-      - grep -q "\[Cron\] Starting crond" /var/log/svc-cron-init || echo "No crond"
-    expectedOutput: [".*No crond.*"]
+      - grep -q "\[Cron\] Starting crond" /var/log/svc-cron &> /dev/null
+    exitCode: 1
