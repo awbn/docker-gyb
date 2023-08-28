@@ -4,7 +4,7 @@ A containerized version of [Got Your Back](https://github.com/jay0lee/got-your-b
 [![Build and tests](https://img.shields.io/github/actions/workflow/status/awbn/docker-gyb/docker.yml?branch=main&logo=github&style=for-the-badge)](https://github.com/awbn/docker-gyb/actions/workflows/docker.yml) [![GYB Release](https://img.shields.io/github/actions/workflow/status/awbn/docker-gyb/gyb_release.yml?branch=main&label=Release&logo=docker&style=for-the-badge)](https://github.com/awbn/docker-gyb/actions/workflows/gyb_release.yml) [![awbn/gyb](https://img.shields.io/docker/pulls/awbn/gyb?style=for-the-badge&logo=docker)](https://hub.docker.com/r/awbn/gyb)
 
 ## Supported platforms
-This is a multi-platform image which supports `linux/amd64`,`linux/arm64`, and `linux/arm/v7`.
+This is a multi-platform image which supports `linux/amd64` and `linux/arm64`. `linux/arm/v7` support is deprecated due to the upstream LSIO images deprecating armhf support.
 
 ## Tags
 Tags correspond with [Got Your Back releases](https://github.com/jay0lee/got-your-back/releases). `:latest` refers to the latest published release and all releases since 1.40 are available as individual tags (e.g. `awbn/gyb:1.40` contains GYB v1.40).
