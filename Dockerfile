@@ -22,6 +22,7 @@ RUN \
     curl \
     jq \
     py3-pip \
+    logrotate \
     ssmtp && \
   if [ -z "${GYB_VERSION}" ]; then \
     GYB_VERSION=$(curl -sX GET https://api.github.com/repos/${GYB_REPO}/releases/latest \
