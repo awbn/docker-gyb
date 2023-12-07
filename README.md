@@ -128,7 +128,7 @@ See the [GYB Wiki](https://github.com/jay0lee/got-your-back/wiki#running-gyb-for
 - In the Google cloud console, click 'Credentials' -> 'Create Credential' -> 'OAuth client ID':
   - 'Application Type': Desktop App
   - 'Name': GYB (or anything)
-- Run `docker run -it -e EMAIL=example@gmail.com -e NOCRON=1 -v ${PWD}/config:/config awbn/gyb /app/gyb --action --action estimate --search "newer_than:7d"`
+- Run `docker run -it -e EMAIL=example@gmail.com -e NOCRON=1 -v ${PWD}/config:/config awbn/gyb /app/gyb --action estimate --search "newer_than:7d"`
   - Select Scopes (Recommended: 1,6 for read-only backups; Gmail read-only and storage quota)
   - Visit provided URL and paste token into the console
     - Google may warn you that the app is not verified; this is the app that you created in the step above (to verify: click the name of the app and check that the email matches what you entered as the developer email above). You're giving yourself permissions to your own data
