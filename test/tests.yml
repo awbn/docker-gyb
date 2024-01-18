@@ -123,6 +123,7 @@ commandTests:
       - -c
       - |
         sed -i '1s/^/#!\/usr\/bin\/with-contenv bash \n/' /etc/crontabs/abc &&
+        chown abc /etc/crontabs/abc &&
         chmod +x /etc/crontabs/abc &&
         s6-setuidgid abc /etc/crontabs/abc &> /dev/null &&
         echo "*** Log file content: ***" &&
@@ -156,6 +157,7 @@ commandTests:
       - |
         sed -i "s/sendmail -t <<-EOF/cat <<-EOF > \/tmp\/mail.out/g" /app/mailonerror &&
         sed -i '1s/^/#!\/usr\/bin\/with-contenv bash \n/' /etc/crontabs/abc &&
+        chown abc /etc/crontabs/abc &&
         chmod +x /etc/crontabs/abc &&
         s6-setuidgid abc /etc/crontabs/abc &> /dev/null &&
         grep -q "\[.*\] ERROR: --email is required" /tmp/gyb.log || echo "Missing log file entry" &&
