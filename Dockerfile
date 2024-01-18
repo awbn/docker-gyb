@@ -1,4 +1,4 @@
-FROM ghcr.io/linuxserver/baseimage-alpine:3.18
+FROM ghcr.io/linuxserver/baseimage-alpine:3.19
 
 ARG GYB_VERSION
 LABEL org.opencontainers.image.source="https://github.com/awbn/docker-gyb"
@@ -33,7 +33,7 @@ RUN \
   curl -sLX GET https://github.com/${GYB_REPO}/archive/refs/tags/${GYB_VERSION}.tar.gz \
     | tar -zx --strip-components=1 -C /app/src \
     || { echo "ERROR: Could not find GYB Release '${GYB_VERSION}'" >&2 && exit 1; } && \
-  pip3 install --no-cache-dir --requirement /app/src/requirements.txt
+  pip3 install --break-system-packages --no-cache-dir --requirement /app/src/requirements.txt
 
 COPY root/ /
 VOLUME ["/config"]
