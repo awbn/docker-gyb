@@ -34,7 +34,7 @@ jobs:
           echo -e "tag: $tag\nrevision: $rev\nisLatest: $islatest"
       - 
         name: Checkout
-        uses: actions/checkout@v4.2.0
+        uses: actions/checkout@v4.2.1
       -
         name: Build a single platform for testing
         uses: docker/build-push-action@v6
