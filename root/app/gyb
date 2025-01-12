@@ -22,10 +22,14 @@ if [ -n "${DEBUG}" ]; then
   DEBUG=" --debug"
 fi
 
+if [ -n "${USE_SERVICE_ACCOUNT}" ]; then
+  SERVICE_ACCOUNT=" --service-account"
+fi
+
 CONFIG_FLDR=" --config-folder $CONFIG_DIR"
 LOCAL_FLDR=" --local-folder $DEST_DIR"
 
-CMD="python3 /app/src/gyb.py $@${MEM_LIMIT}${EMAIL}${CONFIG_FLDR}${LOCAL_FLDR}${DEBUG}"
+CMD="python3 /app/src/gyb.py $@${MEM_LIMIT}${EMAIL}${CONFIG_FLDR}${LOCAL_FLDR}${DEBUG}${SERVICE_ACCOUNT}"
 echo "[Running] ${CMD}"
 
 # Make sure jobs aren't competing with each other. Placing here so we output
