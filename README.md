@@ -80,6 +80,9 @@ To run the full job at a different schedule, set the `JOB_FULL_CRON` env variabl
 
 In addition to the `JOB_FULL_` job, there are also the `JOB_INC_` and `JOB_EXTRA_` jobs. By default, the extra job is not used, but could be used to, e.g., back up a particular label more often. See the [Parameters](#parameters) section for more details.
 
+### Using a Google Workspace Service Account
+By default, the container is configured to call GYB using the the standard 3-legged OAuth authentication to set up the credentials for the account. GYB does support the use of Google Workspace service account credentials, which allows Google Workspace admins to use GYB on their users' accounts without requiring the users' passwords. It is recommended you follow the guide in the [GYB wiki](https://github.com/GAM-team/got-your-back/wiki#google-workspace-admins) for setting up the service account credentials, then include the oauth2service.json credentials file in the volume you mount to `/config` to make it accessible to GYB. Setting the env variable `USE_SERVICE_ACCOUNT=1` will append the `--service-account` flag to all GYB calls, enabling it for both the cron jobs and `docker run` calls. Using service account credentials enables using the Google Workspace-only GYB commands with the container.
+
 ## File permissions
 By default the container creates all new files in `/config` with a umask of `077` (`rw` for the owner, no permissions for group/others). This is because sensitive files containing auth tokens, etc will get created. However, this can cause issues if you swap users or if you access the files outside of the container. If you want the files created to be more widely accessible, you can pass a different umask (e.g., `022`: `rw` for owner `r` for everyone else, or `100`: `rw` for everyone) via the `UMASK` environment variable. Make sure you understand how [umask works](https://en.wikipedia.org/wiki/Umask) before relying on this for security.
 
@@ -111,6 +114,7 @@ By default the container creates all new files in `/config` with a umask of `077
 | `-e SMTP_USER` | - | SMTP User for sending failure notification mails |
 | `-e SMTP_PASS` | - | SMTP Password for sending failure notification mails |
 | `-e SMTP_TLS` | YES | Use TLS when connecting to SMTP_HOST|
+| `-e USE_SERVICE_ACCOUNT=1` | - | If set, tells GYB to use Google Workspace service account credentials. This enables additional GYB commands that can only be used against Google Workspace accounts. Is passed to GYB as `--service-account` |
 | `-v /config` | - | All data is stored in this volume |
 
 ## Bootstrapping Notes
