@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Prints a GYB release's tag, version, islatest and revision as GITHUB_OUTPUT lines.
+# Defaults to the latest release. The tag comes from upstream and ends up in docker tags,
+# URLs and shell commands, so check its format before using it.
+set -euo pipefail
+repo=GAM-team/got-your-back
+
+latest=$(gh api "repos/${repo}/releases/latest" --jq .tag_name)
+tag=${1:-$latest}
+for t in "$tag" "$latest"; do
+  [[ "$t" =~ ^v[0-9]+(\.[0-9]+)*$ ]] || { echo "ERROR: not a GYB release tag: '${t}'" >&2; exit 1; }
+done
+revision=$(gh api "repos/${repo}/git/ref/tags/${tag}" --jq .object.sha)
+[[ "$revision" =~ ^[0-9a-f]{40}$ ]] || { echo "ERROR: no tagged GYB release '${tag}'" >&2; exit 1; }
+
+echo "tag=${tag}"
+echo "version=${tag#v}"
+echo "islatest=$([ "$tag" = "$latest" ] && echo true || echo false)"
+echo "revision=${revision}"

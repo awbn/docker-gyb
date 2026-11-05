@@ -1,0 +1,54 @@
+name: Check for a new GYB release
+
+# Runs daily. If GYB's latest release hasn't been published yet (in either variant),
+# start the release workflow for it.
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      -
+        name: Release the latest GYB if it has no image
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # gyb-release-info checks the tag's format
+          info=$(.github/scripts/gyb-release-info)
+          tag=$(sed -n 's/^tag=//p' <<< "$info")
+          version=$(sed -n 's/^version=//p' <<< "$info")
+          missing=""
+          for t in "$version" "$version-rootless"; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' \
+              "https://hub.docker.com/v2/namespaces/awbn/repositories/gyb/tags/$t")
+            case "$code" in
+              200) ;;
+              404) missing="$missing $t" ;;
+              *) echo "ERROR: Docker Hub answered $code for awbn/gyb:$t" >&2; exit 1 ;;
+            esac
+          done
+          if [ -z "$missing" ]; then
+            echo "GYB $tag is published in both variants"
+            exit 0
+          fi
+          # Don't start a second release if one is already queued or running
+          running=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow gyb_release.yml \
+            --json status --jq '[.[] | select(.status != "completed")] | length')
+          if [ "$running" -gt 0 ]; then
+            echo "Missing:$missing; a release is already running"
+            exit 0
+          fi
+          echo "Missing:$missing; releasing GYB $tag"
+          gh workflow run gyb_release.yml --repo "$GITHUB_REPOSITORY" --ref main -f tag="$tag"
