@@ -42,3 +42,17 @@ jobs:
       -
         name: Test
         run: ./test.sh --only ${{ matrix.variant }} awbn/gyb-test:ci
+
+  # The check that branch protection requires. It passes only if every image passed, so
+  # the matrix can change without touching the repo's settings.
+  result:
+    name: Build and test
+    if: always()
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Every image passed
+        env:
+          RESULT: ${{ needs.build-and-test.result }}
+        run: test "$RESULT" = success
