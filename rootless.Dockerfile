@@ -1,7 +1,7 @@
 # The rootless variant, published as the `-rootless` tags. GYB runs as whichever user
 # the container is started with, nothing needs root, and the root filesystem can be
 # read-only. Jobs are scheduled by supercronic. See "Rootless variant" in README.md.
-FROM python:3.13-alpine
+FROM python:3.15-alpine
 
 # Required, so that every image is built from a known GYB release.
 ARG GYB_VERSION
