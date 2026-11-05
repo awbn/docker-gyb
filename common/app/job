@@ -1,0 +1,50 @@
+#!/bin/sh
+# Runs one scheduled job. Its output goes to the container's log (and LOG_FILE, if set),
+# its exit code goes to $CONFIG_DIR/.last-run for the health check, and if it fails, the
+# end of its output is mailed (if MAIL_TO and MAIL_FROM are set).
+# shellcheck disable=SC3040 # busybox ash supports pipefail; we want the job's exit code
+set -o pipefail
+umask "${UMASK:-077}"
+
+cr=$(printf '\r')
+mail=""
+if [ -n "${MAIL_TO:-}" ] && [ -n "${MAIL_FROM:-}" ]; then
+  mail=$(mktemp)
+  trap 'rm -f "$mail"' EXIT
+fi
+
+# Rotate the log once it's over 512 KiB, keeping five compressed copies
+rotate() {
+  [ -f "$LOG_FILE" ] && [ "$(wc -c < "$LOG_FILE")" -gt 524288 ] || return 0
+  rm -f "$LOG_FILE.5.gz"
+  for i in 4 3 2 1; do
+    if [ -f "$LOG_FILE.$i.gz" ]; then mv "$LOG_FILE.$i.gz" "$LOG_FILE.$((i + 1)).gz"; fi
+  done
+  gzip -c "$LOG_FILE" > "$LOG_FILE.1.gz" && : > "$LOG_FILE"
+}
+
+# Write one line of output. If LOG_FILE can't be written, don't fail the job over it.
+log() {
+  printf '%s\n' "$1"
+  if [ -n "$mail" ]; then printf '%s\n' "$1" >> "$mail"; fi
+  if [ -n "${LOG_FILE:-}" ]; then printf '[%s] %s\n' "$(date +%FT%T%z)" "$1" >> "$LOG_FILE" || true; fi
+}
+
+if [ -n "${LOG_FILE:-}" ]; then rotate; fi
+
+# GYB redraws its progress counters in place with carriage returns. Only log the final
+# count. Also keep a last line that has no newline.
+"$@" 2>&1 | while IFS= read -r line || [ -n "$line" ]; do
+  line=${line%"$cr"}
+  log "${line##*"$cr"}"
+done
+rc=$?
+
+echo "$rc $(date +%s)" > "$CONFIG_DIR/.last-run"
+[ "$rc" -eq 0 ] && exit 0
+
+log "ERROR: job failed with exit code $rc: $*" >&2
+if [ -n "$mail" ]; then
+  tail -n 200 "$mail" | /app/mail || echo "ERROR: could not send the failure mail" >&2
+fi
+exit "$rc"

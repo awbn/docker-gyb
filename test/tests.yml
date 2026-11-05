@@ -40,10 +40,23 @@ commandTests:
     args:
       - -c
       - |
-        [ -f /etc/crontabs/abc ] || echo crontabs file missing &&
-        [ -f /app/src/nobrowser.txt ] || echo nobrowser file missing &&
-        [ -f /etc/ssmtp/ssmtp.conf ] || echo ssmtp file missing
-    excludedOutput: [".*crontabs file missing.*|.*nobrowser file missing.*|.*ssmtp file missing.*"]
+        [ -f /etc/crontabs/abc ] || echo crontabs file missing
+    excludedOutput: [".*crontabs file missing.*"]
+
+  - name: What the init creates follows UMASK
+    setup: [["/init","true"]]
+    envVars:
+      - key: CONFIG_DIR
+        value: /tmp/gyb
+      - key: DEST_DIR
+        value: /tmp/gyb/data
+      - key: LOG_FILE
+        value: /tmp/gyb/logs/gyb.log
+      - key: NOCRON
+        value: 1
+    command: stat
+    args: ["-c", "%a %U %n", "/tmp/gyb/data", "/tmp/gyb/logs", "/tmp/gyb/logs/gyb.log"]
+    expectedOutput: ["700 abc /tmp/gyb/data\\n700 abc /tmp/gyb/logs\\n600 abc /tmp/gyb/logs/gyb.log"]
   
   - name: Cron schedule properly generated
     setup: [["/init","true"]]
@@ -58,7 +71,7 @@ commandTests:
     args:
       - -c
       - grep "foo/bar/baz" /etc/crontabs/abc
-    expectedOutput: ["\\* \\* \\* \\* \\*  foo/bar/baz  2\\>\\&1"]
+    expectedOutput: ["(?m)^\\* \\* \\* \\* \\* /usr/bin/with-contenv /app/job foo/bar/baz$"]
   
   - name: GYB Wrapper script
     setup: [["/init","true"]]
@@ -71,15 +84,26 @@ commandTests:
     args:
       - -c
       - /app/gyb --version
-    expectedOutput: [".*\\[Running\\] python3 /app/src/gyb.py --version --email example@gmail.com.*"]
+    expectedOutput: ["\\[Running\\] gyb --version .*--email example@gmail.com"]
   
-  - name: Send mail on error
+  # Run the cron lines the way cron does: as abc, with an empty env, so /app/job only
+  # gets the container's settings through with-contenv. Uses /tmp/gyb rather than
+  # /config, since /config is a volume and isn't kept from the setup step.
+  - name: A failing job logs, mails and turns the container unhealthy
     setup: [["/init","true"]]
     envVars:
       - key: MAIL_FROM
         value: "foo@gmail.com"
       - key: MAIL_TO
         value: "bar@gmail.com"
+      - key: SMTP_HOST
+        value: 127.0.0.1
+      - key: SMTP_PORT
+        value: 1
+      - key: CONFIG_DIR
+        value: /tmp/gyb
+      - key: LOG_FILE
+        value: /tmp/gyb/logs/gyb.log
       - key: JOB_FULL_CRON
         value: " "
       - key: JOB_FULL_CMD
@@ -94,76 +118,57 @@ commandTests:
     args:
       - -c
       - |
-        sed -i "s/sendmail -t <<-EOF/cat <<-EOF > \/tmp\/mail.out/g" /app/mailonerror &&
-        sed -i '1s/^/#!\/usr\/bin\/with-contenv bash \n/' /etc/crontabs/abc &&
-        chmod +x /etc/crontabs/abc &&
-        /etc/crontabs/abc &> /dev/null &&
-        echo "*** Error mail content: ***" &&
-        cat /tmp/mail.out &&
-        echo "*** End Error mail content ***"
-    expectedOutput: [".*From: foo@gmail.com\nTo: bar@gmail.com\nSubject: Error running Got Your Back job*."]
-  
-  - name: Log to file
-    setup: [["/init","true"]]
-    envVars:
-      - key: LOG_FILE
-        value: /tmp/gyb.log
-      - key: JOB_FULL_CRON
-        value: " "
-      - key: JOB_FULL_CMD
-        value: "/app/gyb --short-version"
-      - key: JOB_INC_CRON
-        value: " "
-      - key: JOB_INC_CMD
-        value: "true"
-      - key: NOCRON
-        value: 1
-    command: bash
-    args:
-      - -c
-      - |
-        sed -i '1s/^/#!\/usr\/bin\/with-contenv bash \n/' /etc/crontabs/abc &&
-        chown abc /etc/crontabs/abc &&
-        chmod +x /etc/crontabs/abc &&
-        s6-setuidgid abc /etc/crontabs/abc &> /dev/null &&
-        echo "*** Log file content: ***" &&
-        cat /tmp/gyb.log &&
-        echo "*** End log file content ***" &&
-        grep -q "/tmp/gyb.log" /tmp/logrotate.conf
-    expectedOutput: ["\\[.*\\] [0-9]+\\.[0-9]+"]
+        sed -n 1p /etc/crontabs/abc | env -i s6-setuidgid abc sh > /tmp/out 2>&1
+        grep -q "ERROR: --email is required" /tmp/out || echo "Missing container log entry"
+        grep -q "^\[.*\] ERROR: --email is required" /tmp/gyb/logs/gyb.log || echo "Missing log file entry"
+        grep -q "could not send the failure mail" /tmp/out || echo "No mail attempted"
+        [ "$(stat -c %U /tmp/gyb/.last-run)" = abc ] || echo "Result not recorded as abc"
+        /app/healthcheck > /dev/null && echo "Still healthy"
+        echo done
+    expectedOutput: ["done"]
+    excludedOutput: [".*Missing.*|.*No mail.*|.*not recorded.*|.*Still healthy.*"]
 
-  - name: Log to file AND mail on error
+  - name: A succeeding job turns it healthy again
     setup: [["/init","true"]]
     envVars:
-      - key: MAIL_FROM
-        value: "foo@gmail.com"
-      - key: MAIL_TO
-        value: "bar@gmail.com"
-      - key: LOG_FILE
-        value: /tmp/gyb.log
+      - key: CONFIG_DIR
+        value: /tmp/gyb
       - key: JOB_FULL_CRON
         value: " "
       - key: JOB_FULL_CMD
-        value: "/app/gyb"
+        value: "false"
       - key: JOB_INC_CRON
         value: " "
       - key: JOB_INC_CMD
-        value: "true"
+        value: "/app/gyb --short-version"
       - key: NOCRON
         value: 1
     command: bash
     args:
       - -c
       - |
-        sed -i "s/sendmail -t <<-EOF/cat <<-EOF > \/tmp\/mail.out/g" /app/mailonerror &&
-        sed -i '1s/^/#!\/usr\/bin\/with-contenv bash \n/' /etc/crontabs/abc &&
-        chown abc /etc/crontabs/abc &&
-        chmod +x /etc/crontabs/abc &&
-        s6-setuidgid abc /etc/crontabs/abc &> /dev/null &&
-        grep -q "\[.*\] ERROR: --email is required" /tmp/gyb.log || echo "Missing log file entry" &&
-        grep -q "From: foo@gmail.com" /tmp/mail.out || echo "Missing mail file entry"
-    excludedOutput: [".*Missing log file entry.*|.*Missing mail file entry.*"]
-  
+        sed -n 1p /etc/crontabs/abc | env -i s6-setuidgid abc sh > /dev/null 2>&1
+        sed -n 2p /etc/crontabs/abc | env -i s6-setuidgid abc sh > /dev/null 2>&1
+        /app/healthcheck && echo healthy
+    expectedOutput: ["healthy"]
+
+  # A stand-in for GYB prints the arguments it is given.
+  - name: An argument with a space reaches GYB whole
+    setup: [["/init","true"]]
+    envVars:
+      - key: NOCRON
+        value: 1
+    command: bash
+    args:
+      - -c
+      - |
+        printf 'import sys\nprint(sys.argv[1:])\n' > /tmp/args.py &&
+        sed 's|python3 /app/src/gyb.py|python3 /tmp/args.py|' /app/gyb > /tmp/gyb && chmod 755 /tmp/gyb &&
+        /tmp/gyb --search "label:foo bar"
+    expectedOutput: ["'--search', 'label:foo bar'"]
+
+  # GYB only writes lastcheck.txt when GitHub's API answers, so use a stand-in for GYB
+  # that creates a file instead.
   - name: File Permissions
     setup: [["/init","true"]]
     envVars:
@@ -177,9 +182,27 @@ commandTests:
     args: 
       - -c
       - | 
-        /app/gyb --version > /dev/null &&
-        stat -c "%a" /tmp/lastcheck.txt
-    expectedOutput: ["600"]
+        printf '#!/bin/sh\ntouch /tmp/probe\n' > /tmp/stand-in && chmod 755 /tmp/stand-in &&
+        sed 's|python3 /app/src/gyb.py|/tmp/stand-in|' /app/gyb > /tmp/gyb && chmod 755 /tmp/gyb &&
+        /tmp/gyb > /dev/null &&
+        stat -c "%a %U" /tmp/probe
+    expectedOutput: ["600 abc"]
+
+  # Run through /init like docker run would, so S6_CMD_ARG0 stops crond first
+  - name: A command given to the container runs in place of the schedule
+    command: /init
+    args: ["sh", "-c", "s6-svstat /run/service/svc-cron; pgrep crond || echo no crond"]
+    expectedOutput: ["(?m)^down ", "(?m)^no crond$"]
+
+  # Run the service script directly: through /init, the command would stop it first
+  - name: NOCRON schedules nothing, and its service waits rather than exiting to restart
+    envVars:
+      - key: NOCRON
+        value: 1
+    command: timeout
+    args: ["2", "bash", "/etc/s6-overlay/s6-rc.d/svc-cron/run"]
+    exitCode: 124
+    expectedOutput: ["NOCRON is set: no jobs scheduled"]
 
   # Ideally, we'd look to ensure process is running (ps -e | grep -q crond).
   # Doesn't work with CST; look for indirect indiciation of cron instead

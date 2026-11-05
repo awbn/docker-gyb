@@ -1,9 +1,12 @@
 FROM ghcr.io/linuxserver/baseimage-alpine:3.24
 
+# Required, so that every image is built from a known GYB release.
 ARG GYB_VERSION
 LABEL org.opencontainers.image.source="https://github.com/awbn/docker-gyb"
 
-ENV PYTHONUNBUFFERED=1 \
+# Stop the scheduled jobs when the container is given a command (see /app/oneshot).
+ENV S6_CMD_ARG0=/app/oneshot \
+    PYTHONUNBUFFERED=1 \
     JOB_FULL_CMD='/app/gyb --action backup' \
     JOB_FULL_CRON='0 1 * * SUN' \
     JOB_INC_CMD='/app/gyb --action backup --search "newer_than:3d"' \
@@ -20,14 +23,9 @@ RUN \
   echo "**** install packages ****" && \ 
   apk add --no-cache \
     curl \
-    jq \
     py3-pip \
-    logrotate \
-    ssmtp && \
-  if [ -z "${GYB_VERSION}" ]; then \
-    GYB_VERSION=$(curl -sX GET https://api.github.com/repos/${GYB_REPO}/releases/latest \
-    | jq -r '.tag_name'); \
-  fi && \
+    msmtp && \
+  { [ -n "${GYB_VERSION}" ] || { echo "ERROR: build with --build-arg GYB_VERSION=<tag>" >&2 && exit 1; }; } && \
   echo "**** install Got-Your-Back ${GYB_VERSION} ****" && \  
   mkdir -p /app/src && \ 
   curl -sLX GET https://github.com/${GYB_REPO}/archive/refs/tags/${GYB_VERSION}.tar.gz \
@@ -36,4 +34,8 @@ RUN \
   pip3 install --break-system-packages --no-cache-dir --requirement /app/src/requirements.txt
 
 COPY root/ /
+COPY common/ /
 VOLUME ["/config"]
+
+# Unhealthy if the last scheduled job failed. See "Getting notified of failures" in README.md.
+HEALTHCHECK --interval=5m --timeout=10s --start-period=1m --retries=1 CMD ["/app/healthcheck"]

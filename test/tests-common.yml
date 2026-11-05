@@ -1,0 +1,60 @@
+schemaVersion: 2.0.0
+
+# Tests for the scripts both images share (common/app). Run against each image.
+
+fileExistenceTests:
+  - name: Job
+    path: /app/job
+    shouldExist: true
+    permissions: '-rwxr-xr-x'
+  - name: Health check
+    path: /app/healthcheck
+    shouldExist: true
+    permissions: '-rwxr-xr-x'
+  - name: Mail
+    path: /app/mail
+    shouldExist: true
+    permissions: '-rwxr-xr-x'
+  - name: msmtp
+    path: /usr/bin/msmtp
+    shouldExist: true
+
+# Note: CST replaces $NAME in a test's arguments itself, so don't use $ here.
+commandTests:
+  - name: What a job writes follows UMASK, 077 by default
+    command: sh
+    args: ["-c", "CONFIG_DIR=/tmp LOG_FILE=/tmp/gyb.log /app/job echo hi && stat -c %a /tmp/.last-run /tmp/gyb.log"]
+    expectedOutput: ["\\n600\\n600\\n"]
+  - name: And another UMASK, when given
+    command: sh
+    args: ["-c", "UMASK=022 CONFIG_DIR=/tmp LOG_FILE=/tmp/gyb.log /app/job echo hi && stat -c %a /tmp/.last-run /tmp/gyb.log"]
+    expectedOutput: ["\\n644\\n644\\n"]
+  - name: Healthy before any job has run
+    command: sh
+    args: ["-c", "CONFIG_DIR=/tmp /app/healthcheck"]
+    exitCode: 0
+  - name: A successful job records it, and is healthy
+    command: sh
+    args: ["-c", "CONFIG_DIR=/tmp /app/job true && grep -q '^0 ' /tmp/.last-run && CONFIG_DIR=/tmp /app/healthcheck"]
+    exitCode: 0
+  - name: A failed job records its code, and is unhealthy
+    command: sh
+    args: ["-c", "CONFIG_DIR=/tmp /app/job sh -c 'exit 3'; grep -q '^3 ' /tmp/.last-run && ! CONFIG_DIR=/tmp /app/healthcheck"]
+    exitCode: 0
+  - name: The next success makes it healthy again
+    command: sh
+    args: ["-c", "CONFIG_DIR=/tmp /app/job false; CONFIG_DIR=/tmp /app/job true && CONFIG_DIR=/tmp /app/healthcheck"]
+    exitCode: 0
+  - name: LOG_FILE gets the output, timestamped, and the container log keeps it
+    command: sh
+    args: ["-c", "CONFIG_DIR=/tmp LOG_FILE=/tmp/gyb.log /app/job echo hello && grep -q '^\\[.*\\] hello$' /tmp/gyb.log"]
+    expectedOutput: ["^hello\\n"]
+  - name: LOG_FILE is rotated past 512 KiB
+    command: sh
+    args: ["-c", "head -c 600000 /dev/zero > /tmp/gyb.log && CONFIG_DIR=/tmp LOG_FILE=/tmp/gyb.log /app/job true && test -s /tmp/gyb.log.1.gz && test ! -s /tmp/gyb.log"]
+    exitCode: 0
+  - name: A failed mail is reported, and the job still fails
+    command: sh
+    args: ["-c", "CONFIG_DIR=/tmp MAIL_TO=a@example.com MAIL_FROM=b@example.com SMTP_HOST=127.0.0.1 SMTP_PORT=1 /app/job false"]
+    exitCode: 1
+    expectedError: ["could not send the failure mail"]

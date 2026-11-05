@@ -3,10 +3,8 @@ exec &>> >(tee -a /var/log/init-gyb)
 
 echo "[Config] Starting GYB Config..."
 
-# Docker is headless and should control updates
-touch \
-  /app/src/nobrowser.txt \
-  /app/src/noupdatecheck.txt
+# Folders and the log file created here get the same umask as GYB's own files
+umask "${UMASK:-077}"
 
 # Block Short URLs?
 if [ -n "${NOSHORTURLS}" ]; then
@@ -31,59 +29,31 @@ lsiown -R abc:abc \
   $DEST_DIR
 chmod +x /app/*
 
-# Send mail on cron error?
+# Send mail on cron error? (/app/job sends it)
 if [ -n "${MAIL_FROM}" ] && [ -n "${MAIL_TO}" ]; then
   echo "[Config] Sending mail to ${MAIL_TO} on cron errors"
-  MAILERR="/app/mailonerror"
 fi
 
-# Log to file?
+# Log to file? (/app/job writes and rotates it)
 if [ -n "${LOG_FILE}" ]; then
-  echo "[Config] Logging app runs to ${LOG_FILE}"
+  echo "[Config] Logging app runs to ${LOG_FILE} as well"
+  # If we create the folder, give it to abc so the job can rotate the log. Leave an
+  # existing folder alone.
+  [ -d "${LOG_FILE%/*}" ] || { mkdir -p "${LOG_FILE%/*}" && lsiown abc:abc "${LOG_FILE%/*}"; }
+  touch "${LOG_FILE}" && lsiown abc:abc "${LOG_FILE}"
+fi
 
-  mkdir -p "${LOG_FILE%/*}" && touch "${LOG_FILE}" 
-  lsiown abc:abc "${LOG_FILE}"
-  
-  # Set up logrotate
-  if [ ! -f "${LOG_FILE%/*}/logrotate.status" ]; then
-    touch "${LOG_FILE%/*}/logrotate.status"
-    chmod 600 "${LOG_FILE%/*}/logrotate.status"
+# Set cron schedule. Jobs run through /app/job, which handles logging, the health check
+# and failure mail. Cron doesn't pass on the container's env, so with-contenv does.
+: > /etc/crontabs/abc
+for job in FULL INC EXTRA; do
+  cron_var="JOB_${job}_CRON" cmd_var="JOB_${job}_CMD"
+  if [ -n "${!cmd_var}" ] && [ -n "${!cron_var}" ]; then
+    echo "${!cron_var} /usr/bin/with-contenv /app/job ${!cmd_var}" >> /etc/crontabs/abc
   fi
-
-  if [ ! -f "${LOG_FILE%/*}/logrotate.conf" ]; then
-    sed "s~:LOG_FILE:~${LOG_FILE}~" /app/logrotate.conf > "${LOG_FILE%/*}/logrotate.conf"
-  fi
-  
-  /usr/sbin/logrotate -s "${LOG_FILE%/*}/logrotate.status" "${LOG_FILE%/*}/logrotate.conf"
-  
-  # Cmd for use in cron jobs
-  LOG_FILE_CMD="2>&1 | /app/timestamp >> ${LOG_FILE}"
-fi
-
-# Set cron schedule
-if [ -n "${JOB_FULL_CMD}" ] && [ -n "${JOB_FULL_CRON}" ]; then
-  echo "${JOB_FULL_CRON} ${MAILERR} ${JOB_FULL_CMD} ${LOG_FILE_CMD} 2>&1" > /etc/crontabs/abc
-fi
-
-if [ -n "${JOB_INC_CMD}" ] && [ -n "${JOB_INC_CRON}" ]; then
-  echo "${JOB_INC_CRON} ${MAILERR} ${JOB_INC_CMD} ${LOG_FILE_CMD} 2>&1" >> /etc/crontabs/abc
-fi
-
-if [ -n "${JOB_EXTRA_CMD}" ] && [ -n "${JOB_EXTRA_CRON}" ]; then
-  echo "${JOB_EXTRA_CRON} ${MAILERR} ${JOB_EXTRA_CMD} ${LOG_FILE_CMD} 2>&1" >> /etc/crontabs/abc
-fi
+done
 
 # No real point in running root crontab
 crontab -r root
-
-# Set up mail
-cat << EOF > /etc/ssmtp/ssmtp.conf
-mailhub=${SMTP_HOST}:${SMTP_PORT}
-AuthUser=${SMTP_USER}
-AuthPass=${SMTP_PASS}
-FromLineOverride=YES
-UseSTARTTLS=YES
-UseTLS=${SMTP_TLS:-YES}
-EOF
 
 echo "[Config] GYB Config Complete"

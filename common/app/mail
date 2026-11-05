@@ -1,0 +1,36 @@
+#!/bin/sh
+# Mails stdin to MAIL_TO through SMTP_HOST with msmtp. The config is a private temp file,
+# deleted after sending. The password isn't written to it: msmtp reads it from the env.
+set -eu
+umask 077
+
+# Quote a value for msmtp's config (escape \ and ")
+quote() { printf '"%s"' "$(printf '%s' "$1" | sed 's/[\\"]/\\&/g')"; }
+
+conf=$(mktemp)
+trap 'rm -f "$conf"' EXIT
+{
+  echo "account default"
+  echo "host $(quote "${SMTP_HOST:?SMTP_HOST is not set}")"
+  if [ -n "${SMTP_PORT:-}" ]; then echo "port $SMTP_PORT"; fi
+  echo "from $(quote "$MAIL_FROM")"
+  # STARTTLS by default, like ssmtp. With SMTP_TLS=NO, msmtp only sends the password
+  # unencrypted (as ssmtp did) if the auth method is named, so name it.
+  case "${SMTP_TLS:-YES}" in
+    [Nn][Oo]) echo "tls off"; auth=plain ;;
+    *) printf 'tls on\ntls_starttls on\ntls_trust_file system\n'; auth=on ;;
+  esac
+  # ssmtp never checked certificates. SMTP_TLS_VERIFY=NO allows a self-signed one.
+  case "${SMTP_TLS_VERIFY:-YES}" in [Nn][Oo]) echo "tls_certcheck off" ;; esac
+  if [ -n "${SMTP_USER:-}" ]; then
+    echo "auth $auth"
+    echo "user $(quote "$SMTP_USER")"
+    echo "passwordeval \"printenv SMTP_PASS\""
+  fi
+} > "$conf"
+
+{
+  printf 'From: %s\nTo: %s\nSubject: %s\n\n' \
+    "$MAIL_FROM" "$MAIL_TO" "${MAIL_SUBJECT:-Error running Got Your Back job}"
+  cat
+} | msmtp -C "$conf" -t
