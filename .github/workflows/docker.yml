@@ -1,4 +1,4 @@
-name: Build and test container image
+name: Build and test container images
 
 on:
   push:
@@ -6,26 +6,53 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
-    name: Build and test
+    name: Build and test (${{ matrix.variant }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {variant: default, file: Dockerfile, suffix: ''}
+          - {variant: rootless, file: rootless.Dockerfile, suffix: '-rootless'}
     steps:
-      - 
+      -
         name: Checkout
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      -
+        name: Latest GYB release
+        id: release_info
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/scripts/gyb-release-info >> "$GITHUB_OUTPUT"
       -
         name: Build
-        id: docker_build
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
+          file: ${{ matrix.file }}
+          build-args: GYB_VERSION=${{ steps.release_info.outputs.tag }}
           load: true
           platforms: linux/amd64
-          tags: awbn/gyb-test
+          tags: awbn/gyb-test:ci${{ matrix.suffix }}
       -
         name: Test
-        uses: plexsystems/container-structure-test-action@v0.3.0
-        with:
-          image: awbn/gyb-test:latest
-          config: test/tests.yml
+        run: ./test.sh --only ${{ matrix.variant }} awbn/gyb-test:ci
+
+  # The check that branch protection requires. It passes only if every image passed, so
+  # the matrix can change without touching the repo's settings.
+  result:
+    name: Build and test
+    if: always()
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Every image passed
+        env:
+          RESULT: ${{ needs.build-and-test.result }}
+        run: test "$RESULT" = success

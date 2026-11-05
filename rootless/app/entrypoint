@@ -1,0 +1,51 @@
+#!/bin/sh
+# Entrypoint for the rootless variant. If the container is given a command (e.g.
+# /app/gyb --action create-project), just run it. Otherwise schedule the jobs with
+# supercronic.
+set -eu
+umask "${UMASK:-077}"
+
+# Docker secrets: FILE__<NAME>=<path> sets <NAME> to the file's contents, like the
+# default image's LinuxServer.io base does
+for var in $(env | sed -n 's/^FILE__\([A-Za-z0-9_]*\)=.*/\1/p'); do
+  eval "path=\${FILE__${var}}"
+  # shellcheck disable=SC2154 # path is set by the eval
+  [ -r "$path" ] || { echo "ERROR: FILE__${var}: cannot read '$path'" >&2; exit 1; }
+  export "${var}=$(cat "$path")"
+done
+
+if [ ! -w "$CONFIG_DIR" ]; then
+  echo "ERROR: $CONFIG_DIR is not writable by this container's user, $(id -u):$(id -g): chown it to them" >&2
+  exit 1
+fi
+
+[ $# -gt 0 ] && exec "$@"
+
+# Any value counts, even an empty one, to match the default image
+if [ -n "${NOCRON+x}" ]; then
+  echo "[Config] NOCRON is set: no jobs scheduled"
+  exec tail -f /dev/null
+fi
+
+crontab=/tmp/crontab
+: > "$crontab"
+for job in FULL INC EXTRA; do
+  eval "cron=\${JOB_${job}_CRON:-} cmd=\${JOB_${job}_CMD:-}"
+  if [ -n "$cron" ] && [ -n "$cmd" ]; then
+    echo "$cron /app/job $cmd" >> "$crontab"
+  fi
+done
+[ -s "$crontab" ] || { echo "ERROR: no job to schedule (JOB_*_CRON and JOB_*_CMD)" >&2; exit 1; }
+
+mkdir -p "${DEST:-$DEST_DIR}"
+if [ -n "${LOG_FILE:-}" ]; then
+  echo "[Config] Logging job output to ${LOG_FILE} as well"
+  mkdir -p "$(dirname "$LOG_FILE")"
+fi
+if [ -n "${MAIL_TO:-}" ] && [ -n "${MAIL_FROM:-}" ]; then
+  echo "[Config] Sending mail to ${MAIL_TO} when a job fails"
+fi
+echo "[Config] Scheduled jobs:"
+cat "$crontab"
+echo "[Config] GYB Config Complete"
+exec supercronic -passthrough-logs "$crontab"

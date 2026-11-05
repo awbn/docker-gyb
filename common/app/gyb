@@ -1,0 +1,26 @@
+#!/bin/sh
+# Runs GYB with the container's settings. Only one run at a time.
+set -eu
+
+# In the default image, docker exec and commands given to the container run as root.
+# Re-run as abc, with the container's env from s6 (which includes FILE__ variables).
+if [ "$(id -u)" = 0 ] && [ -x /usr/bin/with-contenv ]; then
+  exec /usr/bin/with-contenv s6-setuidgid abc "$0" "$@"
+fi
+
+# GYB writes auth tokens, so set the umask here too (docker exec skips the entrypoint)
+umask "${UMASK:-077}"
+
+# Make sure jobs aren't competing with each other. exec keeps the lock for the whole run.
+exec 9< "$0"
+flock -n 9 || { echo "ERROR: GYB is already running" >&2; exit 1; }
+
+# Backwards compatibility: DEST is the old name for DEST_DIR
+set -- "$@" --config-folder "$CONFIG_DIR" --local-folder "${DEST:-$DEST_DIR}"
+if [ -n "${EMAIL:-}" ]; then set -- "$@" --email "$EMAIL"; fi
+if [ -n "${MEM_LIMIT:-}" ]; then set -- "$@" --memory-limit "$MEM_LIMIT"; fi
+if [ -n "${DEBUG:-}" ]; then set -- "$@" --debug; fi
+if [ -n "${USE_SERVICE_ACCOUNT:-}" ]; then set -- "$@" --service-account; fi
+
+echo "[Running] gyb $*"
+exec python3 /app/src/gyb.py "$@"

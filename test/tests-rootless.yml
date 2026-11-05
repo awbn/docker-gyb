@@ -1,0 +1,75 @@
+schemaVersion: 2.0.0
+
+fileExistenceTests:
+  - name: GYB Src
+    path: /app/src/gyb.py
+    shouldExist: true
+  - name: GYB wrapper
+    path: /app/gyb
+    shouldExist: true
+    permissions: '-rwxr-xr-x'
+  - name: Entrypoint
+    path: /app/entrypoint
+    shouldExist: true
+    permissions: '-rwxr-xr-x'
+  - name: supercronic
+    path: /usr/bin/supercronic
+    shouldExist: true
+  - name: No s6 init
+    path: /init
+    shouldExist: false
+
+metadataTest:
+  user: '1000:1000'
+  envVars:
+    - key: JOB_FULL_CMD
+      value: '/app/gyb --action backup'
+    - key: JOB_INC_CMD
+      value: '/app/gyb --action backup --search "newer_than:3d"'
+    - key: CONFIG_DIR
+      value: '/config'
+    - key: DEST_DIR
+      value: '/config/data'
+    - key: UMASK
+      value: '077'
+  volumes: ["/config"]
+  entrypoint: ["/sbin/tini", "--", "/app/entrypoint"]
+  exposedPorts: []
+
+commandTests:
+  - name: GYB runs as a user that is not root
+    command: /app/entrypoint
+    args: ["sh", "-c", "id -u && CONFIG_DIR=/tmp DEST_DIR=/tmp/data /app/gyb --version"]
+    expectedOutput: ["^1000\\n", "Got Your Back"]
+  # Note: CST replaces $NAME in a test's arguments itself, so don't use $ here.
+  - name: The entrypoint makes a valid crontab
+    command: sh
+    args: ["-c", "timeout 5 /app/entrypoint > /dev/null 2>&1; grep -c /app/job /tmp/crontab && supercronic -test /tmp/crontab"]
+    expectedOutput: ["^2\\n"]
+    exitCode: 0
+  # A stand-in for GYB prints the arguments it is given.
+  - name: An argument with a space reaches GYB whole
+    command: sh
+    args:
+      - -c
+      - |
+        printf 'import sys\nprint(sys.argv[1:])\n' > /tmp/args.py &&
+        sed 's|python3 /app/src/gyb.py|python3 /tmp/args.py|' /app/gyb > /tmp/gyb && chmod 755 /tmp/gyb &&
+        /tmp/gyb --search "label:foo bar"
+    expectedOutput: ["'--search', 'label:foo bar'"]
+  - name: FILE__ variables are read from files
+    command: sh
+    args: ["-c", "echo secret > /tmp/pass && FILE__SMTP_PASS=/tmp/pass /app/entrypoint printenv SMTP_PASS"]
+    expectedOutput: ["^secret\\n"]
+  - name: /config belongs to the default user, for a new volume to take
+    command: stat
+    args: ["-c", "%u:%g", "/config"]
+    expectedOutput: ["^1000:1000\\n"]
+  - name: A CONFIG_DIR it cannot write is refused, saying why
+    envVars:
+      - key: CONFIG_DIR
+        value: /
+    command: /app/entrypoint
+    args: ["true"]
+    exitCode: 1
+    expectedError: ["/ is not writable by this container's user, 1000:1000"]

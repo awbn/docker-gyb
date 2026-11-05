@@ -1,0 +1,7 @@
+#!/bin/sh
+# Runs a command given to the container (via S6_CMD_ARG0 in the Dockerfile). Stop crond
+# first, so a scheduled job can't start in the middle of a long command (like a restore)
+# and fail because GYB is already running. The rootless variant works the same way.
+s6-svc -wd -T 10000 -d /run/service/svc-cron ||
+  echo "WARNING: could not stop the schedule; a job due during this command may fail" >&2
+exec "$@"

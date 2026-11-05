@@ -1,7 +1,11 @@
 #!/usr/bin/with-contenv bash
 exec &>> >(tee -a /var/log/svc-cron)
 
-if [ -z ${NOCRON+x} ]; then
-  echo "[Cron] Starting crond"  
-  exec /usr/sbin/crond -f -S -l 5 -c /etc/crontabs
+if [ -n "${NOCRON+x}" ]; then
+  # s6 restarts a service that exits, so wait here instead of exiting
+  echo "[Cron] NOCRON is set: no jobs scheduled"
+  exec s6-pause
 fi
+
+echo "[Cron] Starting crond"
+exec /usr/sbin/crond -f -S -l 5 -c /etc/crontabs

@@ -1,100 +1,135 @@
 name: GYB Release
 
+# Builds, tests and publishes both images of a GYB release. Started by release.sh or
+# gyb_check.yml, and weekly for the latest release to pick up base image fixes.
 on:
   repository_dispatch:
     types: [gyb-release]
   workflow_dispatch:
     inputs:
       tag:
-        description: 'GYB Release Tag'
+        description: 'GYB release tag (v1.97); empty for the latest'
+        required: false
+  schedule:
+    - cron: '41 5 * * MON'
+
+permissions:
+  contents: read
+
+# Only one release at a time, so two runs can't race to push the same tags
+concurrency:
+  group: gyb-release
+  cancel-in-progress: false
 
 jobs:
-  build-and-push:
-    name: Build and push docker image
+  release-info:
+    name: Release info
     runs-on: ubuntu-latest
-    steps: 
+    outputs:
+      tag: ${{ steps.info.outputs.tag }}
+      version: ${{ steps.info.outputs.version }}
+      islatest: ${{ steps.info.outputs.islatest }}
+      revision: ${{ steps.info.outputs.revision }}
+    steps:
       -
-        name: Check GYB release info
-        id: release_info
-        run: |
-          gyb_repo="GAM-team/got-your-back"
-          [ -z "${{ github.event.client_payload.tag }}" ] && tag="${{ github.event.inputs.tag }}" || tag="${{ github.event.client_payload.tag }}"
-          [ -z "$tag" ] && { echo "ERROR: No tag passed to workflow'" >&2 && exit 1; }
-          echo "::set-output name=tag::$tag"
-
-          latest=$(curl -sX GET https://api.github.com/repos/$gyb_repo/releases/latest \
-          | jq -r '.tag_name')
-          [ "$latest" == "$tag" ] && islatest="true" || islatest="false"
-          echo "::set-output name=islatest::$islatest" 
-
-          rev=$(curl -sX GET "https://api.github.com/repos/$gyb_repo/git/ref/tags/$tag" \
-          | jq -er '.object.sha') || { echo "ERROR: Could not find a tagged GYB release for '$tag'"; exit 1; }
-          echo "::set-output name=revision::$rev"
-
-          echo -e "tag: $tag\nrevision: $rev\nisLatest: $islatest"
-      - 
         name: Checkout
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      -
+        name: Check the GYB release
+        id: info
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Passed through env, not inline in the script: gyb-release-info checks it first
+          REQUESTED: ${{ github.event.inputs.tag || github.event.client_payload.tag }}
+        run: .github/scripts/gyb-release-info "$REQUESTED" | tee -a "$GITHUB_OUTPUT"
+
+  build-and-push:
+    name: Build, test and push (${{ matrix.variant }})
+    needs: release-info
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - variant: default
+            file: Dockerfile
+            suffix: ''
+            latest: latest
+            title: awbn/gyb
+            docs: README.md
+          - variant: rootless
+            file: rootless.Dockerfile
+            suffix: '-rootless'
+            latest: rootless
+            title: awbn/gyb (rootless)
+            docs: 'README.md#rootless-variant'
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       -
         name: Build a single platform for testing
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
-          build-args: GYB_VERSION=${{ steps.release_info.outputs.tag }}
+          file: ${{ matrix.file }}
+          build-args: GYB_VERSION=${{ needs.release-info.outputs.tag }}
           load: true
           platforms: linux/amd64
-          tags: awbn/gyb-test
+          tags: awbn/gyb-test:ci${{ matrix.suffix }}
       -
         name: Test
-        uses: plexsystems/container-structure-test-action@v0.3.0
-        with:
-          image: awbn/gyb-test:latest
-          config: test/tests.yml
+        run: ./test.sh --only ${{ matrix.variant }} awbn/gyb-test:ci
       #-
       #  name: Login to GHCR
-      #  uses: docker/login-action@v4.6.0
+      #  uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
       #  with:
       #    registry: ghcr.io
       #    username: ${{ github.repository_owner }}
       #    password: ${{ secrets.GITHUB_TOKEN }}
       -
         name: Login to DockerHub
-        uses: docker/login-action@v4.6.0
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
+        # Tag as <version><suffix>, plus `latest` or `rootless` for the latest release
         name: Container metadata
         id: metadata
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: |
             awbn/gyb
           #  ghcr.io/awbn/gyb
           flavor: |
-            latest=${{ steps.release_info.outputs.islatest }}
+            latest=false
+            suffix=${{ matrix.suffix }}
           tags: |
-            type=match,pattern=v(.*),group=1,value=${{ steps.release_info.outputs.tag }}
+            type=raw,value=${{ needs.release-info.outputs.version }}
+            type=raw,value=${{ matrix.latest }},suffix=,enable=${{ needs.release-info.outputs.islatest }}
           labels: |
-            org.opencontainers.image.title=awbn/gyb
-            org.opencontainers.image.documentation=https://github.com/awbn/docker-gyb/blob/main/README.md
-            gyb.source=https://github.com/jay0lee/got-your-back
-            gyb.version=${{ steps.release_info.outputs.tag }}
-            gyb.revision=${{ steps.release_info.outputs.revision }}
-      - 
+            org.opencontainers.image.title=${{ matrix.title }}
+            org.opencontainers.image.documentation=https://github.com/awbn/docker-gyb/blob/main/${{ matrix.docs }}
+            gyb.source=https://github.com/GAM-team/got-your-back
+            gyb.version=${{ needs.release-info.outputs.tag }}
+            gyb.revision=${{ needs.release-info.outputs.revision }}
+      -
         name: Set up QEMU for x-platform
-        uses: docker/setup-qemu-action@v4
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
       -
         name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       -
+        # Include an SBOM and build provenance (shown on Docker Hub)
         name: Build and push
-        id: docker_build
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
-          build-args: GYB_VERSION=${{ steps.release_info.outputs.tag }}
+          file: ${{ matrix.file }}
+          build-args: GYB_VERSION=${{ needs.release-info.outputs.tag }}
           platforms: linux/amd64,linux/arm64
           push: true
-          labels: ${{ steps.meta.outputs.labels }}
+          provenance: mode=max
+          sbom: true
+          labels: ${{ steps.metadata.outputs.labels }}
           tags: ${{ steps.metadata.outputs.tags }}
