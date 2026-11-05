@@ -4,9 +4,17 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    # A new release waits five days before it is proposed, so one that turns out to be
+    # compromised is likely caught before it reaches a workflow holding secrets.
+    cooldown:
+      default-days: 5
+    # docker/* actions release together: one pull request for them.
+    groups:
+      docker-actions:
+        patterns: ["docker/*"]
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
     cooldown:
       default-days: 5
